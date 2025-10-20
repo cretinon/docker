@@ -1,0 +1,2 @@
+MOUNTFLAGS := --mount source=$(OPSYS)_$(SVCNAME),target=/vpn/
+OTHERFLAGS := --cap-add=NET_ADMIN --device /dev/net/tun

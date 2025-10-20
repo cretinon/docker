@@ -1,0 +1,25 @@
+ARG ARCH=frommakefile
+ARG DISTRIB=frommakefile
+ARG DOCKERSRC=frommakefile
+ARG REGISTRY=frommakefile
+
+FROM ${REGISTRY}/${DOCKERSRC}-debug_${DISTRIB}:${ARCH}
+
+RUN apt-get update && apt-get -y -q install --no-install-recommends netbase autofs procps nfs-common net-tools gir1.2-xapp-1.0 libavahi-compat-libdnssd1 python3-dbus python3-notify2 pip curl ca-certificates && apt-get clean && rm -rf /var/cache/apt/* /var/lib/apt/lists/*
+
+RUN echo "deb http://deb.debian.org/debian bookworm main contrib non-free" >> /etc/apt/sources.list
+
+RUN apt-get update && apt-get -y -q install  unrar && apt-get clean && rm -rf /var/cache/apt/* /var/lib/apt/lists/*
+
+RUN echo " deb http://deb.debian.org/debian bookworm-backports main contrib non-free" >> /etc/apt/sources.list
+
+RUN apt-get update && apt-get -y -q install  -t bookworm-backports sabnzbdplus && apt-get clean && rm -rf /var/cache/apt/* /var/lib/apt/lists/*
+
+ADD entrypoint/sabnzbd.sh /usr/local/sabnzbd.sh
+RUN chmod 755 /usr/local/sabnzbd.sh
+
+RUN echo "/mnt/nfs        /sabnzbd/auto.syno --ghost,--timeout=60" > /etc/auto.master.d/syno.autofs
+
+EXPOSE 8080/tcp
+
+ENTRYPOINT ["/usr/local/sabnzbd.sh"]

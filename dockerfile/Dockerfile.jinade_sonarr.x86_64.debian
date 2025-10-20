@@ -1,0 +1,22 @@
+ARG ARCH=frommakefile
+ARG DISTRIB=frommakefile
+ARG DOCKERSRC=frommakefile
+ARG REGISTRY=frommakefile
+
+FROM ${REGISTRY}/${DOCKERSRC}_${DISTRIB}:${ARCH}
+
+RUN apt-get update && apt-get -y -q install --no-install-recommends netbase autofs nfs-common net-tools libsqlite3-0 wget ca-certificates && apt-get clean && rm -rf /var/cache/apt/* /var/lib/apt/lists/*
+
+RUN echo "/mnt/nfs        /sonarr/auto.syno --ghost,--timeout=60" > /etc/auto.master.d/syno.autofs
+
+RUN mkdir -p /opt/Sonarr
+
+COPY --chmod=755 entrypoint/sonarr.sh /usr/local/bin/
+
+WORKDIR /opt/Sonarr
+
+RUN wget -O- "https://github.com/Sonarr/Sonarr/releases/download/v4.0.13.2932/Sonarr.main.4.0.13.2932.linux-x64.tar.gz" | tar xz --strip-components=1 && rm -rfv Sonarr.Update
+
+EXPOSE 8989
+
+ENTRYPOINT ["/usr/local/bin/sonarr.sh"]

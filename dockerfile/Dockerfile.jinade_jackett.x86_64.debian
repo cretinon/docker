@@ -1,0 +1,20 @@
+ARG ARCH=frommakefile
+ARG DISTRIB=frommakefile
+ARG DOCKERSRC=frommakefile
+ARG REGISTRY=frommakefile
+
+FROM ${REGISTRY}/${DOCKERSRC}_${DISTRIB}:${ARCH}
+
+RUN apt-get update && apt-get -y -q install --no-install-recommends iproute2 netbase net-tools libicu72 mono-devel wget ca-certificates && apt-get clean && rm -rf /var/cache/apt/* /var/lib/apt/lists/*
+
+RUN mkdir -p /opt/Jackett
+
+COPY --chmod=755 entrypoint/jackett.sh /usr/local/bin/
+
+WORKDIR /opt/Jackett
+
+RUN wget -O- "https://github.com/Jackett/Jackett/releases/download/v0.22.1625/Jackett.Binaries.LinuxAMDx64.tar.gz" | tar xz --strip-components=1
+
+EXPOSE 9117
+
+ENTRYPOINT ["/usr/local/bin/jackett.sh"]

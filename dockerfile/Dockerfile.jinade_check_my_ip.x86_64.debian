@@ -1,0 +1,13 @@
+ARG ARCH=frommakefile
+ARG DISTRIB=frommakefile
+ARG DOCKERSRC=frommakefile
+ARG REGISTRY=frommakefile
+
+FROM ${REGISTRY}/${DOCKERSRC}_${DISTRIB}:${ARCH}
+
+RUN apt-get update && apt-get -y -q install --no-install-recommends curl ca-certificates && apt-get clean && rm -rf /var/cache/apt/* /var/lib/apt/lists/*
+
+ADD entrypoint/check_my_ip.sh /usr/local/check_my_ip.sh
+RUN chmod +x /usr/local/check_my_ip.sh
+
+ENTRYPOINT /usr/local/check_my_ip.sh

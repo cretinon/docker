@@ -1,0 +1,33 @@
+ARG ARCH=frommakefile
+ARG DISTRIB=frommakefile
+ARG DOCKERSRC=frommakefile
+ARG REGISTRY=frommakefile
+
+FROM ${REGISTRY}/${DOCKERSRC}_${DISTRIB}:${ARCH}
+
+RUN apt-get update && apt-get -y -q install --no-install-recommends curl openssl build-essential libssl-dev ca-certificates &&  apt-get clean && rm -rf /var/cache/apt/* /var/lib/apt/lists/*
+
+RUN mkdir -p /usr/src/squid \
+    && curl -fSL -o squid.tar.gz "https://github.com/squid-cache/squid/releases/download/SQUID_6_12/squid-6.12.tar.gz" \
+    && tar -xzf squid.tar.gz -C /usr/src/squid --strip-components=1 && rm squid.tar.gz
+
+RUN cd /usr/src/squid \
+    && ./configure --prefix=/opt/squid --enable-icap-client --enable-ssl --with-openssl --enable-ssl-crtd --enable-auth --enable-basic-auth-helpers="NCSA" \
+    && make -j4 \
+    && make install \
+    && rm -rf /usr/src/squid
+
+COPY conf/squid.conf /opt/squid/
+
+RUN mkdir /squid
+RUN groupadd -g 31 squid
+RUN useradd -g squid -u 31 -d /squid squid
+RUN chown squid:squid /squid
+
+EXPOSE 3128
+
+ADD entrypoint/squid.sh /opt/squid/squid.sh
+RUN chmod 755 /opt/squid/squid.sh
+ENTRYPOINT ["/opt/squid/squid.sh"]
+
+
