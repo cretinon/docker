@@ -34,7 +34,7 @@ commands:
     steps:
       - run:
           name : check ou libshell
-          command: git clone https://github.com/cretinon/shell.git git/
+          command: mkdir -p git/shell ; git clone https://github.com/cretinon/shell.git git/shell/
 
   build-result:
     description: 'results of previous build steps'
