@@ -41,7 +41,7 @@ commands:
     steps:
       - run:
           name: Run shellcheck
-          command: shellcheck git/shell/lib_shell.sh
+          command: shellcheck git/shell/lib_docker.sh
 
   run-bats:
     description: 'run bats'
@@ -64,6 +64,6 @@ jobs:
       - build-result
 
 workflows:
-  test-libshell:
+  test-libdocker:
      jobs:
        - build-and-test
