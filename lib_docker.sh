@@ -1,4 +1,6 @@
-#/bin/bash
+#!/bin/bash
+
+# shellcheck source=/dev/null disable=SC2294
 
 #
 # usage: _volume_create --volume_name name ($1)
@@ -6,7 +8,7 @@
 _volume_create () {
     _func_start
 
-    if _notexist $1; then _error "volume_name empty"; else _debug "volume_name:"$1; fi
+    if _notexist "$1"; then _error "volume_name empty"; else _debug "volume_name:$1"; fi
 
     if docker volume ls | grep "$1" > /dev/nulll; then
         _warning "volume already exist"
@@ -27,7 +29,7 @@ _network_list () {
 
     __net=$(docker network list | awk '{print $2}' | grep -vw ID)
 
-    echo $__net
+    echo "$__net"
 
     _func_end
 }
@@ -38,15 +40,15 @@ _network_list () {
 _network_create () {
     _func_start
 
-    if _notexist $1; then _error "network_name EMPTY"; else _debug "network_name:"$1; fi
-    if _notexist $2; then _error "driver EMPTY (must be in:bridge, overlay, host, null)"; else _debug "driver:"$2; fi
-    if _notexist $3; then _error "subnet EMPTY"; else _debug "subnet:"$3; fi
-    if _notexist $4; then _error "gateway EMPTY"; else _debug "gateway:"$4; fi
+    if _notexist "$1"; then _error "network_name EMPTY"; else _debug "network_name:$1"; fi
+    if _notexist "$2"; then _error "driver EMPTY (must be in:bridge, overlay, host, null)"; else _debug "driver:$2"; fi
+    if _notexist "$3"; then _error "subnet EMPTY"; else _debug "subnet:$3"; fi
+    if _notexist "$4"; then _error "gateway EMPTY"; else _debug "gateway:$4"; fi
 
     if _network_list | grep -w "$1" > /dev/null; then
         _warning "network already exist"
     else
-        docker network create -d $2 --subnet=$3 --gateway=$4 $1
+        docker network create -d "$2" --subnet="$3" --gateway="$4" "$1"
     fi
 
 #    docker network create -o "com.docker.network.bridge.name"="docker1"  -o "com.docker.network.bridge.enable_icc"="true" -o "com.docker.network.driver.mtu"="1500" -o "com.docker.network.bridge.enable_ip_masquerade"="true" -o "com.docker.network.bridge.host_binding_ipv4"="0.0.0.0" -d $2 --subnet=$3 --gateway=$4 $1
@@ -61,9 +63,9 @@ _network_create () {
 _network_remove () {
     _func_start
 
-    if _notexist $1; then _error "network_name EMPTY"; else _debug "network_name:"$1; fi
+    if _notexist "$1"; then _error "network_name EMPTY"; else _debug "network_name:$1"; fi
 
-    docker network remove $1
+    docker network remove "$1"
 
     _func_end
 }
@@ -85,9 +87,9 @@ _container_list () {
 _container_log_show () {
     _func_start
 
-    if _notexist $1; then _error "container_name EMPTY ('main --docker container_list' to list active containers)"; else _debug "container_name:"$1; fi
+    if _notexist "$1"; then _error "container_name EMPTY ('main --docker container_list' to list active containers)"; else _debug "container_name:$1"; fi
 
-    docker logs -f $1
+    docker logs -f "$1"
 
     _func_end
 }
@@ -128,7 +130,7 @@ _system_reclaim () {
 _compose_file_from_running_container () {
     _func_start
 
-    if _notexist $1; then _error "container_name EMPTY"; else _debug "container_name:"$1; fi
+    if _notexist "$1"; then _error "container_name EMPTY"; else _debug "container_name:$1"; fi
 
     echo ""
     echo "####"
@@ -136,7 +138,7 @@ _compose_file_from_running_container () {
     echo "####"
     echo ""
 
-    docker run --rm -ti -v /var/run/docker.sock:/var/run/docker.sock bcicen/docker-replay -p $1
+    docker run --rm -ti -v /var/run/docker.sock:/var/run/docker.sock bcicen/docker-replay -p "$1"
 
     _func_end
 }
@@ -147,26 +149,32 @@ _compose_file_from_running_container () {
 _make_action () {
     _func_start
 
-    if _notexist $2; then _error "docker_file EMPTY"; else _debug "docker_file:"$2; fi
-    if _filenotexist $2; then _error "docker_file does not exist"; _debug "docker_file exist:"$2; fi
+    if _notexist "$2"; then _error "docker_file EMPTY"; else _debug "docker_file:$2"; fi
+    if _filenotexist "$2"; then _error "docker_file does not exist"; _debug "docker_file exist:$2"; fi
     if _workingdir_isnot "$DOCKER_DIR"; then _error "running make_build outside of $DOCKER_DIR is not supported"; fi
 
-    local __image=$(echo $2 | cut -d. -f2)
-    local __opsys=$(echo $__image | cut -d_ -f1)
-    local __svcname=$(echo $__image | cut -d_ -f2-99)
-    local __arch=$(echo $2 | cut -d. -f3)
-    local __distrib=$(echo $2 | cut -d. -f4)
+    local __image
+    local __opsys
+    local __svcname
+    local __arch
+    local __distrib
 
-    _debug "image:"$__image
-    _debug "opsys:"$__opsys
-    _debug "svcname:"$__svcname
-    _debug "arch:"$__arch
-    _debug "distrib:"$__distrib
+    __image=$(echo "$2" | cut -d. -f2)
+    __opsys=$(echo "$__image" | cut -d_ -f1)
+    __svcname=$(echo "$__image" | cut -d_ -f2-99)
+    __arch=$(echo "$2" | cut -d. -f3)
+    __distrib=$(echo "$2" | cut -d. -f4)
+
+    _debug "image:$__image"
+    _debug "opsys:$__opsys"
+    _debug "svcname:$__svcname"
+    _debug "arch:$__arch"
+    _debug "distrib:$__distrib"
 
     if $VERBOSE; then
         case $1 in
             build|push|shell|rshell|start|stop)
-                make $1 ARCH=$__arch DISTRIB=$__distrib OPSYS=$__opsys SVCNAME=$__svcname
+                make "$1" ARCH="$__arch" DISTRIB="$__distrib" OPSYS="$__opsys" SVCNAME="$__svcname"
                 if [ $? -ne 0 ]; then
                     _error "'make $1 ARCH=$__arch DISTRIB=$__distrib OPSYS=$__opsys SVCNAME=$__svcname' goes wrong, stop here"
                 fi
@@ -178,7 +186,7 @@ _make_action () {
     else
         case $1 in
             build|push|shell|rshell|start|stop)
-                make $1 ARCH=$__arch DISTRIB=$__distrib OPSYS=$__opsys SVCNAME=$__svcname 1>/dev/null 2>/dev/null
+                make "$1" ARCH="$__arch" DISTRIB="$__distrib" OPSYS="$__opsys" SVCNAME="$__svcname" 1>/dev/null 2>/dev/null
                 if [ $? -ne 0 ]; then
                     _error "'make $1 ARCH=$__arch DISTRIB=$__distrib OPSYS=$__opsys SVCNAME=$__svcname' goes wrong, run again with -v"
                 fi
@@ -245,15 +253,15 @@ _make_build_all () {
     local __file
 
     for __file in $(ls dockerfile/Dockerfile* | grep -v debug | sort -u); do
-        _verbose "Building file:"$__file
-        _make_build $__file
-        _make_push $__file
+        _verbose "Building file:$__file"
+        _make_build "$__file"
+        _make_push "$__file"
     done
 
     for __file in $(ls dockerfile/Dockerfile* | grep debug | sort -u); do
-        _verbose "Building file:"$__file
-        _make_build $__file
-        _make_push $__file
+        _verbose "Building file:$__file"
+        _make_build "$__file"
+        _make_push "$__file"
     done
 
     _func_end
@@ -310,7 +318,7 @@ ExecStart=/usr/bin/dockerd" > /etc/systemd/system/docker.service.d/override.conf
         esac
     done
 
-    echo "DOCKER_DIR=\"$MAIN_DIR/docker\"" > $CONF_DIR/docker.conf
+    echo "DOCKER_DIR=\"$MAIN_DIR/docker\"" > "$CONF_DIR"/docker.conf
 }
 
 #
@@ -326,7 +334,6 @@ _process_lib_docker () {
             --container_name ) CONTAINER_NAME=$2 ; shift ; shift ;;
             --network_name )   NETWORK_NAME=$2 ; shift ; shift ;;
             --volume_name )    VOLUME_NAME=$2 ; shift ; shift ;;
-            --network_name )   NETWORK_NAME=$2 ; shift ; shift ;;
             --driver )         DRIVER=$2 ; shift ; shift ;;
             --subnet )         SUBNET=$2 ; shift ; shift ;;
             --gateway )        GATEWAY=$2 ; shift ; shift ;;
@@ -358,7 +365,7 @@ _process_lib_docker () {
             make_start)	    _make_start "$DOCKER_FILE" ; shift ;;
             make_stop)	    _make_stop "$DOCKER_FILE" ; shift ;;
             -- ) shift ;;
-            *)   if [ "a$1" != "a" ]; then _warning "Function $1 does not exist" ; _usage ; exit 1 ; else break; fi ;;
+            *)   if [ "a$1" != "a" ]; then _warning "Function $1 does not exist" ; _usage ; break ; else break; fi ;;
         esac
     done
 }
