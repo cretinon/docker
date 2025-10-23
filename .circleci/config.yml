@@ -1,0 +1,69 @@
+version: 2.1
+
+commands:
+  update-image:
+    description: 'update apt repo'
+    steps:
+      - run:
+          name: Update image
+          command: sudo mkdir -p /var/lib/apt/lists/partial ; sudo chmod 755 /var/lib/apt/lists/ ; sudo apt update
+
+  install-bats:
+    description: 'install bats from apt'
+    steps:
+      - run:
+          name: Install bats
+          command: sudo apt install -y bats
+
+  install-shell-check:
+    description: 'install shellcheck from apt'
+    steps:
+      - run:
+          name: Install shellcheck
+          command: sudo apt install -y shellcheck
+
+  check-out-prereq:
+    description: 'mkdir'
+    steps:
+      - run:
+          name : mkdir destination directory for git checkout
+          command: mkdir -p git/shell
+
+  build-result:
+    description: 'results of previous build steps'
+    steps:
+      - run:
+          name : Results of previous build steps
+          command: type bats ; bats --version ; type shellcheck ; shellcheck --version ; echo -n "pwd:"; pwd ; find .
+
+  run-shellcheck:
+    description: 'run shellcheck'
+    steps:
+      - run:
+          name: Run shellcheck
+          command: shellcheck git/shell/lib_shell.sh
+
+  run-bats:
+    description: 'run bats'
+    steps:
+      - run:
+          name: Run bats
+          command: GIT_DIR="${HOME}/project/git" bats --verbose-run git/shell/bats/tests.bats
+
+jobs:
+  build-and-test:
+    docker:
+      - image: cimg/base:current
+    steps:
+      - update-image
+      - install-bats
+      - install-shell-check
+      - check-out-prereq
+      - checkout:
+          path: git/shell
+      - build-result
+
+workflows:
+  test-libshell:
+     jobs:
+       - build-and-test
