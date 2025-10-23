@@ -29,6 +29,13 @@ commands:
           name : mkdir destination directory for git checkout
           command: mkdir -p git/docker
 
+  check-out-libshell:
+    description: 'check out libshell'
+    steps:
+      - run:
+          name : check ou libshell
+          command: git clone https://github.com/cretinon/shell.git git/
+
   build-result:
     description: 'results of previous build steps'
     steps:
@@ -61,6 +68,7 @@ jobs:
       - check-out-prereq
       - checkout:
           path: git/docker
+      - check-out-libshell
       - build-result
 
 workflows:
