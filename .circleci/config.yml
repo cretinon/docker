@@ -22,6 +22,13 @@ commands:
           name: Install shellcheck
           command: sudo apt install -y shellcheck
 
+  install-make:
+    description: 'install make from apt'
+    steps:
+      - run:
+          name: Install make
+          command: sudo apt install -y make
+
   check-out-prereq:
     description: 'mkdir'
     steps:
@@ -41,7 +48,7 @@ commands:
     steps:
       - run:
           name : Results of previous build steps
-          command: type bats ; bats --version ; type shellcheck ; shellcheck --version ; echo -n "pwd:"; pwd ; find .
+          command: type bats ; bats --version ; type shellcheck ; shellcheck --version ; type make ; make -v ; echo -n "pwd:"; pwd ; find .
 
   run-shellcheck:
     description: 'run shellcheck'
@@ -71,6 +78,14 @@ commands:
          name: run build test image
          command: docker build --rm --force-rm --compress -f git/docker/dockerfile/Dockerfile.jinade_base.x86_64.debian -t jinade_base_debian:x86_64 --build-arg ARCH=x86_64 --build-arg DOCKERSRC=jinade_base --build-arg DISTRIB=debian --build-arg REGISTRY=localhost:5000 --build-arg PUID=0 --build-arg PGID=0  --label org.label-schema.build-date=2025-10-24T01:52:35Z --label org.label-schema.name=jinade_base --label org.label-schema.schema-version="1.0"  .
 
+  build-image-using-lib_docker:
+    description: 'test build using lib_docker'
+    steps:
+      - run:
+          name: test build using lib_docker
+          command: cd "${HOME}/project/git/docker" ; GIT_DIR="${HOME}/project/git" VERBOSE=true DEBUG=true FUNC_LIST=() . ${HOME}/project/git/shell/lib_shell.sh ; GIT_DIR="${HOME}/project/git" VERBOSE=true DEBUG=true FUNC_LIST=() . ${HOME}/project/git/docker/lib_docker.sh ; GIT_DIR="${HOME}/project/git" VERBOSE=true DEBUG=true FUNC_LIST=() _make_build dockerfile/Dockerfile.jinade_base.x86_64.debian
+
+
 jobs:
   build-and-test:
     docker:
@@ -79,6 +94,7 @@ jobs:
       - update-image
       - install-bats
       - install-shell-check
+      - install-make
       - check-out-prereq
       - checkout:
           path: git/docker
@@ -89,7 +105,7 @@ jobs:
       - test-func-in-circleci
       - setup_remote_docker:
           docker_layer_caching: true
-      - build-image
+      - build-image-using-lib_docker
 
 workflows:
   test-libdocker:
