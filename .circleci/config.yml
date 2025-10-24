@@ -76,7 +76,7 @@ commands:
     steps:
       - run:
           name: test build using my_warp
-          command: cd "${HOME}/project/git/docker" ; ${HOME}/project/git/shell/my_warp.sh --lib docker make_build --docker_file dockerfile/Dockerfile.jinade_base.x86_64.debian
+          command: cd "${HOME}/project/git/docker" ; ${HOME}/project/git/shell/my_warp.sh -d -v --lib docker make_build --docker_file dockerfile/Dockerfile.jinade_base.x86_64.debian
 
 jobs:
   build-and-test:
