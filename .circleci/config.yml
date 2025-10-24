@@ -6,7 +6,7 @@ commands:
     steps:
       - run:
           name: Update image
-          command: sudo mkdir -p /var/lib/apt/lists/partial ; sudo chmod 755 /var/lib/apt/lists/ ; echo sources.list ; cat /etc/apt/sources.list ; echo sources.list.d ; for file in $(ls /etc/apt/sources.list.d/);do echo $file; cat /etc/apt/sources.list.d/$file;done; curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | sudo bash ; sudo apt update
+          command: sudo mkdir -p /var/lib/apt/lists/partial ; sudo chmod 755 /var/lib/apt/lists/ ; echo sources.list ; cat /etc/apt/sources.list ; echo sources.list.d ; for file in $(ls /etc/apt/sources.list.d/);do echo $file; cat /etc/apt/sources.list.d/$file;done; rm -rf /etc/apt/sources.list.d/archive_uri-https_download_docker_com_linux_ubuntu-noble.list; curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | sudo bash ; sudo apt update
 
   install-bats:
     description: 'install bats from apt'
