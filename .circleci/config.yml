@@ -43,12 +43,19 @@ commands:
           name : checkout libshell
           command: mkdir -p git/shell ; git clone https://github.com/cretinon/shell.git git/shell/
 
+  prepare-our-environment:
+    description: 'set all prereq for my_warp'
+    steps:
+      - run:
+          name: set all prereq for my_warp
+          command: chmod +x ${HOME}/project/git/shell/my_warp.sh ; mkdir ${HOME}/conf ; echo -e "VERBOSE=false\nDEBUG=false\nFUNC_LIST=()\nGIT_DIR=\"\${HOME}/project/git\"" > ${HOME}/conf/my_warp.conf
+
   circleci-image-result:
     description: 'results of previous build steps'
     steps:
       - run:
           name : Results of previous build steps
-          command: type bats ; bats --version ; type shellcheck ; shellcheck --version ; type make ; make -v ; echo -n "pwd:"; pwd ; find .
+          command: type bats ; bats --version ; type shellcheck ; shellcheck --version ; type make ; make -v ; echo -n "pwd:"; pwd ; find . ; echo "my_warp.conf" ; cat ${HOME}/conf/my_warp.conf
 
   run-shellcheck:
     description: 'run shellcheck'
@@ -64,13 +71,12 @@ commands:
           name: Run bats
           command: GIT_DIR="${HOME}/project/git" echo "bats --verbose-run git/docker/bats/tests.bats"
 
-  build-image-using-lib_docker:
-    description: 'test build using lib_docker'
+  build-image-using-my_warp:
+    description: 'test build using my_warp'
     steps:
       - run:
-          name: test build using lib_docker
-          command: cd "${HOME}/project/git/docker" ; GIT_DIR="${HOME}/project/git" VERBOSE=true DEBUG=true FUNC_LIST=() . ${HOME}/project/git/shell/lib_shell.sh ; GIT_DIR="${HOME}/project/git" VERBOSE=true DEBUG=true FUNC_LIST=() . ${HOME}/project/git/docker/lib_docker.sh ; GIT_DIR="${HOME}/project/git" VERBOSE=true DEBUG=true FUNC_LIST=() DOCKER_DIR="${HOME}/project/git/docker" _make_build dockerfile/Dockerfile.jinade_base.x86_64.debian
-
+          name: test build using my_warp
+          command: cd "${HOME}/project/git/docker" ; ${HOME}/project/git/shell/my_warp.sh --lib docker make_build --docker_file dockerfile/Dockerfile.jinade_base.x86_64.debian
 
 jobs:
   build-and-test:
@@ -85,12 +91,13 @@ jobs:
       - checkout:
           path: git/docker
       - checkout-libshell
+      - prepare-our-environment
       - circleci-image-result
       - run-shellcheck
       - run-bats
       - setup_remote_docker:
           docker_layer_caching: true
-      - build-image-using-lib_docker
+      - build-image-using-my_warp
 
 workflows:
   test-libdocker:
