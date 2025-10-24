@@ -57,6 +57,13 @@ commands:
           name: Run bats
           command: GIT_DIR="${HOME}/project/git" echo "bats --verbose-run git/docker/bats/tests.bats"
 
+  test-func-in-circleci:
+    description: 'test func call in circleci'
+    steps:
+      - run:
+          name: Test func call in circleci
+          command: GIT_DIR="${HOME}/project/git" VERBOSE=true DEBUG=true FUNC_LIST=() . ${HOME}/project/git/shell/lib_shell.sh ; GIT_DIR="${HOME}/project/git" VERBOSE=true DEBUG=true FUNC_LIST=() . ${HOME}/project/git/docker/lib_docker.sh ; GIT_DIR="${HOME}/project/git" VERBOSE=true DEBUG=true FUNC_LIST=() _network_list
+
   build-image:
     description: 'test build'
     steps:
