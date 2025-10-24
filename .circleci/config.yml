@@ -1,11 +1,11 @@
 version: 2.1
 
 commands:
-  update-image:
+  circleci-image-update:
     description: 'update apt repo'
     steps:
       - run:
-          name: Update image
+          name: circleci image update
           command: sudo mkdir -p /var/lib/apt/lists/partial ; sudo chmod 755 /var/lib/apt/lists/ ; sudo rm -rf /etc/apt/sources.list.d/github_git-lfs.list; sudo apt update
 
   install-bats:
@@ -15,7 +15,7 @@ commands:
           name: Install bats
           command: sudo apt install -y bats
 
-  install-shell-check:
+  install-shellcheck:
     description: 'install shellcheck from apt'
     steps:
       - run:
@@ -29,21 +29,21 @@ commands:
           name: Install make
           command: sudo apt install -y make
 
-  check-out-prereq:
+  checkout-prereq:
     description: 'mkdir'
     steps:
       - run:
           name : mkdir destination directory for git checkout
           command: mkdir -p git/docker
 
-  check-out-libshell:
-    description: 'check out libshell'
+  checkout-libshell:
+    description: 'checkout libshell'
     steps:
       - run:
-          name : check ou libshell
+          name : checkout libshell
           command: mkdir -p git/shell ; git clone https://github.com/cretinon/shell.git git/shell/
 
-  build-result:
+  circleci-image-result:
     description: 'results of previous build steps'
     steps:
       - run:
@@ -64,20 +64,6 @@ commands:
           name: Run bats
           command: GIT_DIR="${HOME}/project/git" echo "bats --verbose-run git/docker/bats/tests.bats"
 
-  test-func-in-circleci:
-    description: 'test func call in circleci'
-    steps:
-      - run:
-          name: Test func call in circleci
-          command: GIT_DIR="${HOME}/project/git" VERBOSE=true DEBUG=true FUNC_LIST=() . ${HOME}/project/git/shell/lib_shell.sh ; GIT_DIR="${HOME}/project/git" VERBOSE=true DEBUG=true FUNC_LIST=() . ${HOME}/project/git/docker/lib_docker.sh ; GIT_DIR="${HOME}/project/git" VERBOSE=true DEBUG=true FUNC_LIST=() _network_list
-
-  build-image:
-    description: 'test build'
-    steps:
-      - run:
-         name: run build test image
-         command: docker build --rm --force-rm --compress -f git/docker/dockerfile/Dockerfile.jinade_base.x86_64.debian -t jinade_base_debian:x86_64 --build-arg ARCH=x86_64 --build-arg DOCKERSRC=jinade_base --build-arg DISTRIB=debian --build-arg REGISTRY=localhost:5000 --build-arg PUID=0 --build-arg PGID=0  --label org.label-schema.build-date=2025-10-24T01:52:35Z --label org.label-schema.name=jinade_base --label org.label-schema.schema-version="1.0"  .
-
   build-image-using-lib_docker:
     description: 'test build using lib_docker'
     steps:
@@ -91,18 +77,17 @@ jobs:
     docker:
       - image: cimg/base:current
     steps:
-      - update-image
+      - circleci-image-update
       - install-bats
-      - install-shell-check
+      - install-shellcheck
       - install-make
-      - check-out-prereq
+      - checkout-prereq
       - checkout:
           path: git/docker
-      - check-out-libshell
-      - build-result
+      - checkout-libshell
+      - circleci-image-result
       - run-shellcheck
       - run-bats
-      - test-func-in-circleci
       - setup_remote_docker:
           docker_layer_caching: true
       - build-image-using-lib_docker
