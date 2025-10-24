@@ -86,6 +86,7 @@ jobs:
       - build-result
       - run-shellcheck
       - run-bats
+      - test-func-in-circleci
       - setup_remote_docker:
           docker_layer_caching: true
       - build-image
