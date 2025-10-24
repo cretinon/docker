@@ -83,7 +83,7 @@ commands:
     steps:
       - run:
           name: test build using lib_docker
-          command: cd "${HOME}/project/git/docker" ; GIT_DIR="${HOME}/project/git" VERBOSE=true DEBUG=true FUNC_LIST=() . ${HOME}/project/git/shell/lib_shell.sh ; GIT_DIR="${HOME}/project/git" VERBOSE=true DEBUG=true FUNC_LIST=() . ${HOME}/project/git/docker/lib_docker.sh ; GIT_DIR="${HOME}/project/git" VERBOSE=true DEBUG=true FUNC_LIST=() DOCKER_DIR="{HOME}/project/git/docker" _make_build dockerfile/Dockerfile.jinade_base.x86_64.debian
+          command: cd "${HOME}/project/git/docker" ; GIT_DIR="${HOME}/project/git" VERBOSE=true DEBUG=true FUNC_LIST=() . ${HOME}/project/git/shell/lib_shell.sh ; GIT_DIR="${HOME}/project/git" VERBOSE=true DEBUG=true FUNC_LIST=() . ${HOME}/project/git/docker/lib_docker.sh ; GIT_DIR="${HOME}/project/git" VERBOSE=true DEBUG=true FUNC_LIST=() DOCKER_DIR="${HOME}/project/git/docker" _make_build dockerfile/Dockerfile.jinade_base.x86_64.debian
 
 
 jobs:
