@@ -83,7 +83,7 @@ commands:
     steps:
       - run:
           name: Run kcov
-          command: GIT_DIR="${HOME}/project/git" kcov --include-path=${HOME}/project/git/docker/ /tmp/dest_kcov ${HOME}/project/git/shell/my_warp.sh --lib docker -b
+          command: GIT_DIR="${HOME}/project/git" kcov --include-path=${HOME}/project/git/docker/ --exclude-path=${HOME}/project/git/docker/.git/,${HOME}/project/git/docker/README.md /tmp/dest_kcov ${HOME}/project/git/shell/my_warp.sh --lib docker -b
 
   build-image-using-my_warp:
     description: 'test build using my_warp'
