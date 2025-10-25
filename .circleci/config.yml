@@ -22,7 +22,7 @@ commands:
           name: Install shellcheck
           command: sudo apt install -y shellcheck
 
- install-kcov:
+   install-kcov:
     description: 'install kcov manually'
     steps:
       - run:
