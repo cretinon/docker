@@ -1,12 +1,15 @@
 version: 2.1
 
+orbs:
+  codecov: codecov/codecov@5
+
 commands:
   circleci-image-update:
     description: 'update apt repo'
     steps:
       - run:
           name: circleci image update
-          command: sudo mkdir -p /var/lib/apt/lists/partial ; sudo chmod 755 /var/lib/apt/lists/ ; sudo rm -rf /etc/apt/sources.list.d/github_git-lfs.list; sudo apt update
+          command: sudo mkdir -p /var/lib/apt/lists/partial ; sudo chmod 755 /var/lib/apt/lists/ ; echo "sudo rm -rf /etc/apt/sources.list.d/github_git-lfs.list"; sudo apt update
 
   install-bats:
     description: 'install bats from apt'
@@ -55,7 +58,7 @@ commands:
     steps:
       - run:
           name: set all prereq for my_warp
-          command: chmod +x ${HOME}/project/git/shell/my_warp.sh ; mkdir ${HOME}/conf ; echo -e "VERBOSE=false\nDEBUG=false\nFUNC_LIST=()\nGIT_DIR=\"\${HOME}/project/git\"" > ${HOME}/conf/my_warp.conf
+          command: chmod +x ${HOME}/project/git/shell/my_warp.sh ; mkdir ${HOME}/conf ; echo -e "VERBOSE=false\nDEBUG=false\nFUNC_LIST=()\nMY_GIT_DIR=\"\${HOME}/project/git\"" > ${HOME}/conf/my_warp.conf
 
   circleci-image-result:
     description: 'results of previous build steps'
@@ -69,21 +72,21 @@ commands:
     steps:
       - run:
           name: Run shellcheck
-          command: echo "shellcheck git/docker/lib_docker.sh"
+          command: shellcheck git/docker/lib_docker.sh
 
   run-bats:
     description: 'run bats'
     steps:
       - run:
           name: Run bats
-          command: GIT_DIR="${HOME}/project/git" bats --verbose-run git/docker/bats/tests.bats
+          command: MY_GIT_DIR="${HOME}/project/git" bats --verbose-run git/docker/bats/tests.bats
 
   run-kcov:
     description: 'run kcov'
     steps:
       - run:
           name: Run kcov
-          command: GIT_DIR="${HOME}/project/git" kcov --include-path=${HOME}/project/git/docker/ --exclude-path=${HOME}/project/git/docker/.git/,${HOME}/project/git/docker/README.md /tmp/dest_kcov ${HOME}/project/git/shell/my_warp.sh --lib docker -b
+          command: cd "${HOME}/project/git/docker" ; MY_GIT_DIR="${HOME}/project/git" kcov --exclude-path=.git/,README.md,/usr/,.codecov.yml --include-path="${HOME}/project/git/docker"  /tmp/dest_kcov ${HOME}/project/git/shell/my_warp.sh --lib docker -b
 
   build-image-using-my_warp:
     description: 'test build using my_warp'
@@ -116,6 +119,11 @@ jobs:
       - build-image-using-my_warp
       - store_artifacts:
           path: /tmp/dest_kcov
+      - codecov/upload:
+          files: /tmp/dest_kcov/my_warp.sh/cobertura.xml
+          slug: cretinon/docker
+          git_service: github
+
 
 workflows:
   test-libdocker:

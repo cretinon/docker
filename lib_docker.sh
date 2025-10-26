@@ -174,8 +174,7 @@ _make_action () {
     if $VERBOSE; then
         case $1 in
             build|push|shell|rshell|start|stop)
-                make "$1" ARCH="$__arch" DISTRIB="$__distrib" OPSYS="$__opsys" SVCNAME="$__svcname"
-                if [ $? -ne 0 ]; then
+                if ! make "$1" ARCH="$__arch" DISTRIB="$__distrib" OPSYS="$__opsys" SVCNAME="$__svcname"; then
                     _error "'make $1 ARCH=$__arch DISTRIB=$__distrib OPSYS=$__opsys SVCNAME=$__svcname' goes wrong, stop here"
                 fi
                 ;;
@@ -186,8 +185,7 @@ _make_action () {
     else
         case $1 in
             build|push|shell|rshell|start|stop)
-                make "$1" ARCH="$__arch" DISTRIB="$__distrib" OPSYS="$__opsys" SVCNAME="$__svcname" 1>/dev/null 2>/dev/null
-                if [ $? -ne 0 ]; then
+                if ! make "$1" ARCH="$__arch" DISTRIB="$__distrib" OPSYS="$__opsys" SVCNAME="$__svcname" 1>/dev/null 2>/dev/null; then
                     _error "'make $1 ARCH=$__arch DISTRIB=$__distrib OPSYS=$__opsys SVCNAME=$__svcname' goes wrong, run again with -v"
                 fi
                 ;;
@@ -252,16 +250,24 @@ _make_build_all () {
 
     local __file
 
-    for __file in $(ls dockerfile/Dockerfile* | grep -v debug | sort -u); do
-        _verbose "Building file:$__file"
-        _make_build "$__file"
-        _make_push "$__file"
+    for __file in dockerfile/Dockerfile*; do
+        case $__file in
+            *debug*) true;;
+            *) _verbose "Building file:$__file"
+               _make_build "$__file"
+               _make_push "$__file"
+               ;;
+        esac
     done
 
-    for __file in $(ls dockerfile/Dockerfile* | grep debug | sort -u); do
-        _verbose "Building file:$__file"
-        _make_build "$__file"
-        _make_push "$__file"
+    for __file in dockerfile/Dockerfile*; do
+        case $__file in
+            *debug*) _verbose "Building file:$__file"
+                     _make_build "$__file"
+                     _make_push "$__file"
+                     ;;
+            *) ;;
+        esac
     done
 
     _func_end
@@ -325,7 +331,7 @@ ExecStart=/usr/bin/dockerd" > /etc/systemd/system/docker.service.d/override.conf
 #
 #
 _process_lib_docker () {
-    _load_conf "$GIT_DIR/docker/conf/docker.conf"
+    _load_conf "$MY_GIT_DIR/docker/conf/docker.conf"
 
     eval set -- "$@"
 

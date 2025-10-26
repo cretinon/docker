@@ -9,8 +9,8 @@ unset LIB
 CUR_NAME=${FUNCNAME[0]}
 
 # load our shell functions and all libs
-source $GIT_DIR/shell/lib_shell.sh
-source $GIT_DIR/docker/lib_docker.sh
+source $MY_GIT_DIR/shell/lib_shell.sh
+source $MY_GIT_DIR/docker/lib_docker.sh
 #_load_libs
 
 setup() {
