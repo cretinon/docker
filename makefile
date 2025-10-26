@@ -5,7 +5,7 @@
 DOCKERSRC        := $(OPSYS)_base
 
 HOSTARCH         := x86_64
-ARCH             := $(shell uname -m | sed "s_armv7l_armhf_") 
+ARCH             := $(shell uname -m | sed "s_armv7l_armhf_")
 
 SHCOMMAND        := /bin/bash
 
@@ -15,7 +15,7 @@ IMAGETAG         := $(REGISTRY)/$(OPSYS)_$(SVCNAME)_$(DISTRIB):$(ARCH)
 CNTNAME          := $(SVCNAME) # name for container name : $(OPSYS)_name, hostname : name
 
 PUID             := $(shell id -u)
-PGID             := $(shell id -g) 
+PGID             := $(shell id -g)
 
 # -- }}}
 
@@ -24,14 +24,14 @@ PGID             := $(shell id -g)
 BUILDFLAGS := --rm --force-rm --compress -f $(CURDIR)/dockerfile/Dockerfile.$(OPSYS)_$(SVCNAME).$(ARCH).$(DISTRIB) -t $(IMAGETAG) \
 	--build-arg ARCH=$(ARCH) \
 	--build-arg DOCKERSRC=$(DOCKERSRC) \
-        --build-arg DISTRIB=$(DISTRIB) \
-        --build-arg REGISTRY=$(REGISTRY) \
+	--build-arg DISTRIB=$(DISTRIB) \
+	--build-arg REGISTRY=$(REGISTRY) \
 	--build-arg PUID=$(PUID) \
 	--build-arg PGID=$(PGID) \
 	--label org.label-schema.build-date=$(shell date -u +"%Y-%m-%dT%H:%M:%SZ") \
 	--label org.label-schema.name=$(OPSYS)_$(SVCNAME) \
 	--label org.label-schema.schema-version="1.0" \
-        --build-arg http_proxy=http://192.168.2.28:3142
+	--build-arg http_proxy=http://192.168.2.28:3142
 
 -include $(CURDIR)/include/makefile.$(OPSYS)_$(SVCNAME).$(ARCH).$(DISTRIB)
 
@@ -52,7 +52,7 @@ CONTARGS    := #
 
 all : build start
 
-build : 
+build :
 	if [ "$(DISTRIB)" = "alpine" ]; then make fetch; fi
 	echo "Building $(DISTRIB) for $(ARCH) from $(HOSTARCH)";
 	if [ "$(ARCH)" != "$(HOSTARCH)" ]; then make regbinfmt fetchqemu ; fi;
@@ -93,7 +93,7 @@ push :
 		LATESTTAG=$$(echo $(IMAGETAG) | sed 's/:$(ARCH)/:latest/'); \
 		docker tag $(IMAGETAG) $${LATESTTAG}; \
 		docker push $${LATESTTAG}; \
-	fi; 
+	fi;
 
 test :
 	docker run --rm -it $(NAMEFLAGS) $(RUNFLAGS) $(PORTFLAGS) $(MOUNTFLAGS) $(OTHERFLAGS) $(IMAGETAG) sh -ec 'echo "do what you want here"'
