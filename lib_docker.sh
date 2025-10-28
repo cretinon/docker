@@ -2,18 +2,135 @@
 
 # shellcheck source=/dev/null disable=SC2294
 
+####################################################################################################
+############################################## INSTALL #############################################
+####################################################################################################
+#
+# usage: _install
+#
+_install_docker () {
+    local __answer
+
+    _warning "If you'r using apt-cacher-ng as proxy, be sure you have something like :"
+    _warning "    PassThroughPattern: ^download\.docker\.com:443$"
+    _warning "in your /etc/apt-cacher-ng/acng.conf then /etc/init.d/apt-cacher-ng restart"
+    _warning ""
+
+    while true; do
+        read -r -p "Continue ? (y/N)" __answer
+        case $__answer in
+            [Yy] )
+                apt-get update
+                apt-get install apt-transport-https ca-certificates curl gnupg2 software-properties-common -y
+                curl -fsSL https://download.docker.com/linux/debian/gpg | apt-key add -
+                echo "deb [arch=amd64] https://download.docker.com/linux/debian $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list
+                apt-get update
+                apt-get install docker-ce docker-ce-cli containerd.io -y
+                apt-get clean
+
+                mkdir -p /etc/docker/
+                echo "{
+  \"hosts\": [\"tcp://0.0.0.0:2375\", \"unix:///var/run/docker.sock\"],
+  \"dns-search\": [\"intranet.local\"]
+}
+" > /etc/docker/daemon.json
+
+                mkdir /etc/systemd/system/docker.service.d/
+
+                echo "[Service]
+ExecStart=
+ExecStart=/usr/bin/dockerd" > /etc/systemd/system/docker.service.d/override.conf
+
+                systemctl daemon-reload
+                systemctl restart docker.service
+                break
+                ;;
+            [Nn] )
+                echo "Doing nothing"
+                break
+                ;;
+            "" )
+                break
+                ;;
+            * ) echo "Please answer Y or N.";;
+        esac
+    done
+
+    echo "DOCKER_DIR=\"$MAIN_DIR/docker\"" > "$CONF_DIR"/docker.conf
+}
+
+####################################################################################################
+########################################### DOCKER ADMIN ###########################################
+####################################################################################################
 #
 # usage: _volume_create --volume_name name ($1)
 #
 _volume_create () {
     _func_start
 
-    if _notexist "$1"; then _error "volume_name empty"; else _debug "volume_name:$1"; fi
+    if _notexist "$1"; then _error "volume_name empty"; _func_end ; return 1 ; fi
 
-    if docker volume ls | grep "$1" > /dev/nulll; then
+    _debug "volume_name:$1"
+
+    if docker volume ls | $GREP "$1" > /dev/nulll; then
         _warning "volume already exist"
     else
         docker volume create "$1"
+    fi
+
+    _func_end
+}
+
+#
+# usage: _volume_list
+#
+_volume_list () {
+    _func_start
+
+    docker volume ls | awk '{print $2}' | $GREP -vw "VOLUME"
+
+    _func_end
+}
+
+#
+# usage: _volume_remove --volume_name name ($1)
+#
+_volume_remove () {
+    _func_start
+
+    if _notexist "$1"; then _error "volume_name empty"; _func_end ; return 1 ; fi
+
+    _debug "volume_name:$1"
+
+    if docker volume ls | $GREP "$1" > /dev/nulll; then
+        docker volume remove "$1"
+    else
+        _warning "volume doesnt exist"
+    fi
+
+    _func_end
+}
+
+#
+# usage: _network_create --network_name name ($1) --driver driver ($2) --subnet 172.xx.0.0/16 ($3) --gateway 172.xx.xxx.xxx ($4)
+#
+_network_create () {
+    _func_start
+
+    if _notexist "$1"; then _error "network_name EMPTY"; _func_end ; return 1 ; fi
+    if _notexist "$2"; then _error "driver EMPTY (must be in:bridge, overlay, host, null)"; _func_end ; return 1 ; fi
+    if _notexist "$3"; then _error "subnet EMPTY"; _func_end ; return 1 ; fi
+    if _notexist "$4"; then _error "gateway EMPTY"; _func_end ; return 1 ; fi
+
+    _debug "network_name:$1"
+    _debug "driver:$2"
+    _debug "subnet:$3"
+    _debug "gateway:$4"
+
+    if _network_list | $GREP -w "$1" > /dev/null; then
+        _warning "network already exist"
+    else
+        docker network create -d "$2" --subnet="$3" --gateway="$4" "$1"
     fi
 
     _func_end
@@ -25,34 +142,7 @@ _volume_create () {
 _network_list () {
     _func_start
 
-    local __net
-
-    __net=$(docker network list | awk '{print $2}' | grep -vw ID)
-
-    echo "$__net"
-
-    _func_end
-}
-
-#
-# usage: _network_create --network_name name ($1) --driver driver ($2) --subnet 172.xx.0.0/16 ($3) --gateway 172.xx.xxx.xxx ($4)
-#
-_network_create () {
-    _func_start
-
-    if _notexist "$1"; then _error "network_name EMPTY"; else _debug "network_name:$1"; fi
-    if _notexist "$2"; then _error "driver EMPTY (must be in:bridge, overlay, host, null)"; else _debug "driver:$2"; fi
-    if _notexist "$3"; then _error "subnet EMPTY"; else _debug "subnet:$3"; fi
-    if _notexist "$4"; then _error "gateway EMPTY"; else _debug "gateway:$4"; fi
-
-    if _network_list | grep -w "$1" > /dev/null; then
-        _warning "network already exist"
-    else
-        docker network create -d "$2" --subnet="$3" --gateway="$4" "$1"
-    fi
-
-#    docker network create -o "com.docker.network.bridge.name"="docker1"  -o "com.docker.network.bridge.enable_icc"="true" -o "com.docker.network.driver.mtu"="1500" -o "com.docker.network.bridge.enable_ip_masquerade"="true" -o "com.docker.network.bridge.host_binding_ipv4"="0.0.0.0" -d $2 --subnet=$3 --gateway=$4 $1
-#    docker network create -o "com.docker.network.bridge.enable_icc"="true" -o "com.docker.network.driver.mtu"="1500" -o "com.docker.network.bridge.enable_ip_masquerade"="true" -o "com.docker.network.bridge.host_binding_ipv4"="0.0.0.0" -d $2 --subnet=$3 --gateway=$4 $1
+    docker network list | awk '{print $2}' | $GREP -vw ID
 
     _func_end
 }
@@ -63,7 +153,9 @@ _network_create () {
 _network_remove () {
     _func_start
 
-    if _notexist "$1"; then _error "network_name EMPTY"; else _debug "network_name:$1"; fi
+    if _notexist "$1"; then _error "network_name EMPTY";_func_end ; return 1 ; fi
+
+    _debug "network_name:$1"
 
     docker network remove "$1"
 
@@ -87,7 +179,9 @@ _container_list () {
 _container_log_show () {
     _func_start
 
-    if _notexist "$1"; then _error "container_name EMPTY ('main --docker container_list' to list active containers)"; else _debug "container_name:$1"; fi
+    if _notexist "$1"; then _error "container_name EMPTY ('main --docker container_list' to list active containers)"; _func_end ; return 1 ; fi
+
+    _debug "container_name:$1"
 
     docker logs -f "$1"
 
@@ -124,13 +218,19 @@ _system_reclaim () {
     docker system prune -a
 }
 
+####################################################################################################
+############################################ CONTAINER #############################################
+####################################################################################################
+
 #
 # usage: _compose_file_from_running_container --container_name name ($1)
 #
 _compose_file_from_running_container () {
     _func_start
 
-    if _notexist "$1"; then _error "container_name EMPTY"; else _debug "container_name:$1"; fi
+    if _notexist "$1"; then _error "container_name EMPTY"; _func_end ; return 1 ; fi
+
+    _debug "container_name:$1"
 
     echo ""
     echo "####"
@@ -143,15 +243,22 @@ _compose_file_from_running_container () {
     _func_end
 }
 
+####################################################################################################
+############################################## IMAGES ##############################################
+####################################################################################################
 #
 # _make_action action ($1) docker_file ($2)
 #
 _make_action () {
     _func_start
 
-    if _notexist "$2"; then _error "docker_file EMPTY"; else _debug "docker_file:$2"; fi
-    if _filenotexist "$2"; then _error "docker_file does not exist"; _debug "docker_file exist:$2"; fi
-    if _workingdir_isnot "$DOCKER_DIR"; then _error "running make_build outside of $DOCKER_DIR is not supported"; fi
+    if _notexist "$2"; then _error "docker_file EMPTY"; _func_end ; return 1 ; fi
+    if _filenotexist "$2"; then _error "docker_file does not exist"; _func_end ; return 1 ; fi
+    if _workingdir_isnot "$DOCKER_DIR"; then _error "running make_build outside of $DOCKER_DIR is not supported"; _func_end ; return 1 ; fi
+
+    _debug "docker_file:$2"
+    _debug "docker_file exist:$2"
+
 
     local __image
     local __opsys
@@ -175,22 +282,22 @@ _make_action () {
         case $1 in
             build|push|shell|rshell|start|stop)
                 if ! make "$1" ARCH="$__arch" DISTRIB="$__distrib" OPSYS="$__opsys" SVCNAME="$__svcname"; then
-                    _error "'make $1 ARCH=$__arch DISTRIB=$__distrib OPSYS=$__opsys SVCNAME=$__svcname' goes wrong, stop here"
+                    _error "'make $1 ARCH=$__arch DISTRIB=$__distrib OPSYS=$__opsys SVCNAME=$__svcname' goes wrong, stop here" ; _func_end ; return 1
                 fi
                 ;;
             *)
-                    _error "Action $1 not defined"
+                    _error "Action $1 not defined" ; _func_end ; return 1
                     ;;
         esac
     else
         case $1 in
             build|push|shell|rshell|start|stop)
                 if ! make "$1" ARCH="$__arch" DISTRIB="$__distrib" OPSYS="$__opsys" SVCNAME="$__svcname" 1>/dev/null 2>/dev/null; then
-                    _error "'make $1 ARCH=$__arch DISTRIB=$__distrib OPSYS=$__opsys SVCNAME=$__svcname' goes wrong, run again with -v"
+                    _error "'make $1 ARCH=$__arch DISTRIB=$__distrib OPSYS=$__opsys SVCNAME=$__svcname' goes wrong, run again with -v" ; _func_end ; return 1
                 fi
                 ;;
             *)
-                _error "Action $1 not defined"
+                _error "Action $1 not defined" ; _func_end ; return 1
                 ;;
         esac
     fi
@@ -246,7 +353,7 @@ _make_build () {
 _make_build_all () {
     _func_start
 
-    if _workingdir_isnot "$DOCKER_DIR"; then _error "running make_build outside of $DOCKER_DIR is ot supported"; fi
+    if _workingdir_isnot "$DOCKER_DIR"; then _error "running make_build outside of $DOCKER_DIR is ot supported"; _func_end; return 1 ; fi
 
     local __file
 
@@ -273,63 +380,10 @@ _make_build_all () {
     _func_end
 }
 
-#
-# usage: _install
-#
-_install_docker () {
-    local __answer
 
-    _warning "If you'r using apt-cacher-ng as proxy, be sure you have something like :"
-    _warning "    PassThroughPattern: ^download\.docker\.com:443$"
-    _warning "in your /etc/apt-cacher-ng/acng.conf then /etc/init.d/apt-cacher-ng restart"
-    _warning ""
-
-    while true; do
-        read -r -p "Continue ? (y/N)" __answer
-        case $__answer in
-            [Yy] )
-                apt-get update
-                apt-get install apt-transport-https ca-certificates curl gnupg2 software-properties-common -y
-                curl -fsSL https://download.docker.com/linux/debian/gpg | apt-key add -
-                echo "deb [arch=amd64] https://download.docker.com/linux/debian $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list
-                apt-get update
-                apt-get install docker-ce docker-ce-cli containerd.io -y
-                apt-get clean
-
-                mkdir -p /etc/docker/
-                echo "{
-  \"hosts\": [\"tcp://0.0.0.0:2375\", \"unix:///var/run/docker.sock\"],
-  \"dns-search\": [\"include/tranet.local\"]
-}
-" > /etc/docker/daemon.json
-
-                mkdir /etc/systemd/system/docker.service.d/
-
-                echo "[Service]
-ExecStart=
-ExecStart=/usr/bin/dockerd" > /etc/systemd/system/docker.service.d/override.conf
-
-                systemctl daemon-reload
-                systemctl restart docker.service
-                break
-                ;;
-            [Nn] )
-                echo "Doing nothing"
-                break
-                ;;
-            "" )
-                break
-                ;;
-            * ) echo "Please answer Y or N.";;
-        esac
-    done
-
-    echo "DOCKER_DIR=\"$MAIN_DIR/docker\"" > "$CONF_DIR"/docker.conf
-}
-
-#
-#
-#
+####################################################################################################
+############################################# PROCESS ##############################################
+####################################################################################################
 _process_lib_docker () {
     _load_conf "$MY_GIT_DIR/docker/conf/docker.conf"
 
@@ -355,7 +409,9 @@ _process_lib_docker () {
             compose_file_from_running_container ) _compose_file_from_running_container "$CONTAINER_NAME" ; shift ;;
             network_list )               _network_list ; shift ;;
             network_create )	         _network_create "$NETWORK_NAME" "$DRIVER" "$SUBNET" "$GATEWAY" ; shift ;;
+            volume_list )	         _volume_list  ; shift ;;
             volume_create )	         _volume_create "$VOLUME_NAME" ; shift ;;
+            volume_remove )	         _volume_remove "$VOLUME_NAME" ; shift ;;
             network_remove )	         _network_remove "$NETWORK_NAME" ; shift ;;
             container_filelog_show )     _container_filelog_show ; shift ;;
             container_filelog_truncate ) _container_filelog_truncate ; shift ;;
