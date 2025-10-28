@@ -348,6 +348,56 @@ _make_build () {
 }
 
 #
+# usage: _build --docker_file file ($1)
+#
+_build () {
+    _func_start
+
+    if _notexist "$1"; then _error "DOCKER_FILE EMPTY"; _func_end ; return 1 ; fi
+    if _filenotexist "$1"; then _error "DOCKER_FILE does not exist"; _func_end ; return 1 ; fi
+
+    _debug "DOCKER_FILE:$1"
+
+    local __image
+    local __opsys
+    local __svcname
+    local __arch
+    local __distrib
+    local __target
+    local __tag
+
+    __image=$(echo "$1" | cut -d. -f2)
+    __opsys=$(echo "$__image" | cut -d_ -f1)
+    __svcname=$(echo "$__image" | cut -d_ -f2-99)
+    __arch=$(echo "$1" | cut -d. -f3)
+    __distrib=$(echo "$1" | cut -d. -f4)
+
+#    __target="localhost:5000"
+    __target="cretinon"
+
+#    __tag=$__arch
+    __tag="latest"
+
+    _debug "image:$__image"
+    _debug "opsys:$__opsys"
+    _debug "svcname:$__svcname"
+    _debug "arch:$__arch"
+    _debug "distrib:$__distrib"
+
+    # --build-arg REGISTRY=localhost:5000 --build-arg http_proxy=http://192.168.2.28:3142
+
+    docker build --rm --force-rm --compress -f "$1" -t "$__target"/"$__image"_"$__distrib":"$__tag" --build-arg ARCH="$__arch" --build-arg DOCKERSRC="$__image" --build-arg DISTRIB="$__distrib" --build-arg PUID=0 --build-arg PGID=0 --label org.label-schema.build-date="$(date -u +'%Y-%m-%dT%H:%M:%SZ')" --label org.label-schema.name="$__image" --label org.label-schema.schema-version="1.0"  .
+
+    docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
+
+    docker push "$__target"/"$__image"_"$__distrib":"$__tag"
+
+    docker logout
+
+    _func_end
+}
+
+#
 # usage: _make_build_all
 #
 _make_build_all () {
@@ -421,6 +471,7 @@ _process_lib_docker () {
             system_reclaim )	         _system_reclaim ; shift ;;
             make_build_all) _make_build_all ; shift ;;
             make_build)	    _make_build "$DOCKER_FILE" ; shift ;;
+            build)	    _build "$DOCKER_FILE" ; shift ;;
             make_push)	    _make_push "$DOCKER_FILE" ; shift ;;
             make_shell)	    _make_shell "$DOCKER_FILE" ; shift ;;
             make_rshell)    _make_rshell "$DOCKER_FILE" ; shift ;;

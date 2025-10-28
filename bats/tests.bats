@@ -50,3 +50,8 @@ setup() {
   run $MY_GIT_DIR/shell/my_warp.sh --lib docker network_remove --network_name testnet
   assert_success
 }
+
+@test "_build" {
+  run $MY_GIT_DIR/shell/my_warp.sh -d -v --lib docker build --docker_file dockerfile/Dockerfile.jinade_base.x86_64.debian
+  assert_success
+}
