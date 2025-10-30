@@ -93,7 +93,7 @@ commands:
     steps:
       - run:
           name: build_all using my_warp
-          command: cd "${HOME}/project/git/docker" ; ${HOME}/project/git/shell/my_warp.sh -d -v --lib docker _build_all --target dockerhub
+          command: cd "${HOME}/project/git/docker" ; ${HOME}/project/git/shell/my_warp.sh -d -v --lib docker build_all --target dockerhub
 
 jobs:
   build-and-test:
