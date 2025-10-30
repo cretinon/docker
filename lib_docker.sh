@@ -356,15 +356,12 @@ _build () {
     if _notexist "$1"; then _error "DOCKER_FILE EMPTY"; _func_end ; return 1 ; fi
     if _filenotexist "$1"; then _error "DOCKER_FILE does not exist"; _func_end ; return 1 ; fi
     if _notexist "$2"; then _error "TARGET EMPTY"; _func_end ; return 1 ; fi
-    if _notexist "$DOCKER_USERNAME"; then _error "DOCKER_USERNAME EMPTY"; _func_end ; return 1 ; fi
-    if _notexist "$DOCKER_PASSWORD"; then _error "DOCKER_PASSWORD EMPTY"; _func_end ; return 1 ; fi
 
     _debug "DOCKER_FILE:$1"
     _debug "TARGET:$2"
 
     local __image
     local __opsys
-    local __svcname
     local __arch
     local __distrib
     local __target
@@ -373,24 +370,63 @@ _build () {
 
     __image=$(echo "$1" | cut -d. -f2)
     __opsys=$(echo "$__image" | cut -d_ -f1)
-    __svcname=$(echo "$__image" | cut -d_ -f2-99)
     __arch=$(echo "$1" | cut -d. -f3)
     __distrib=$(echo "$1" | cut -d. -f4)
+
+    _debug "image:$__image"
+    _debug "opsys:$__opsys"
+    _debug "arch:$__arch"
+    _debug "distrib:$__distrib"
+
+    case "$2" in
+       "local")        __target="localhost:5000" ; __http_proxy="http://192.168.2.28:3142" ; __https_proxy="http://192.168.2.28:3142" ;;
+       "dockerhub")
+           if _notexist "$DOCKER_USERNAME"; then _error "DOCKER_USERNAME EMPTY"; _func_end ; return 1 ; fi
+           __target="$DOCKER_USERNAME" ; __http_proxy="" ; __https_proxy=""
+           ;;
+        *) _error "bad target $2 (must be local/dockerhub)"; _func_end ; return 1 ;;
+    esac
+
+    docker build --rm --force-rm --compress -f "$1" -t "$__target"/"$__image"_"$__distrib":"$__arch" --build-arg ARCH="$__arch" --build-arg DOCKERSRC="$__opsys""_base" --build-arg DISTRIB="$__distrib" --build-arg PUID=0 --build-arg PGID=0 --label org.label-schema.build-date="$(date -u +'%Y-%m-%dT%H:%M:%SZ')" --label org.label-schema.name="$__image" --label org.label-schema.schema-version="1.0" --build-arg REGISTRY="$__target" --build-arg HTTP_PROXY="$__http_proxy" --no-cache --build-arg HTTPS_PROXY="$__https_proxy" .
+
+    _func_end
+}
+
+#
+# usage: _push --docker_file file ($1) --target local/dockerhub ($2)
+#
+_push () {
+    _func_start
+
+    if _notexist "$1"; then _error "DOCKER_FILE EMPTY"; _func_end ; return 1 ; fi
+    if _filenotexist "$1"; then _error "DOCKER_FILE does not exist"; _func_end ; return 1 ; fi
+    if _notexist "$2"; then _error "TARGET EMPTY"; _func_end ; return 1 ; fi
+    if _notexist "$DOCKER_USERNAME"; then _error "DOCKER_USERNAME EMPTY"; _func_end ; return 1 ; fi
+    if _notexist "$DOCKER_PASSWORD"; then _error "DOCKER_PASSWORD EMPTY"; _func_end ; return 1 ; fi
+
+    _debug "DOCKER_FILE:$1"
+    _debug "TARGET:$2"
+
+    local __image
+    local __arch
+    local __distrib
+    local __target
+    local __http_proxy
+    local __https_proxy
+
+    __image=$(echo "$1" | cut -d. -f2)
+    __arch=$(echo "$1" | cut -d. -f3)
+    __distrib=$(echo "$1" | cut -d. -f4)
+
+    _debug "image:$__image"
+    _debug "arch:$__arch"
+    _debug "distrib:$__distrib"
 
     case "$2" in
        "local")        __target="localhost:5000" ; __http_proxy="http://192.168.2.28:3142" ; __https_proxy="http://192.168.2.28:3142" ;;
        "dockerhub")    __target="$DOCKER_USERNAME" ; __http_proxy="" ; __https_proxy="" ;;
         *) _error "bad target $2 (must be local/dockerhub)"; _func_end ; return 1 ;;
     esac
-
-    _debug "image:$__image"
-    _debug "opsys:$__opsys"
-    _debug "svcname:$__svcname"
-    _debug "arch:$__arch"
-    _debug "distrib:$__distrib"
-
-    docker build --rm --force-rm --compress -f "$1" -t "$__target"/"$__image"_"$__distrib":"$__arch" --build-arg ARCH="$__arch" --build-arg DOCKERSRC="$__opsys""_base" --build-arg DISTRIB="$__distrib" --build-arg PUID=0 --build-arg PGID=0 --label org.label-schema.build-date="$(date -u +'%Y-%m-%dT%H:%M:%SZ')" --label org.label-schema.name="$__image" --label org.label-schema.schema-version="1.0" --build-arg REGISTRY="$__target" --build-arg HTTP_PROXY="$__http_proxy" --no-cache --build-arg HTTPS_PROXY="$__https_proxy" .
-
 
     if [ "a$2" = "adockerhub" ]; then docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"; fi
 
@@ -399,6 +435,34 @@ _build () {
     docker push "$__target"/"$__image"_"$__distrib":"latest"
 
     if [ "a$2" = "adockerhub" ]; then docker logout ; fi
+
+    _func_end
+}
+
+#
+# usage: _build_all --target local/dockerhub ($1)
+#
+_build_all () {
+    _func_start
+
+    if _workingdir_isnot "$DOCKER_DIR"; then _error "running _build_all outside of $DOCKER_DIR is not supported"; _func_end; return 1 ; fi
+
+    if _notexist "$1"; then _error "TARGET EMPTY"; _func_end ; return 1 ; fi
+    if _notexist "$DOCKER_USERNAME"; then _error "DOCKER_USERNAME EMPTY"; _func_end ; return 1 ; fi
+    if _notexist "$DOCKER_PASSWORD"; then _error "DOCKER_PASSWORD EMPTY"; _func_end ; return 1 ; fi
+
+
+    local __file
+
+    for __file in dockerfile/Dockerfile*; do
+        case $__file in
+            *debug*) true;;
+            *) _verbose "Building file:$__file"
+               _build "$__file" "$1"
+               _push "$__file" "$1"
+               ;;
+        esac
+    done
 
     _func_end
 }
@@ -479,6 +543,8 @@ _process_lib_docker () {
             make_build_all) _make_build_all ; shift ;;
             make_build)	    _make_build "$DOCKER_FILE" ; shift ;;
             build)	    _build "$DOCKER_FILE" "$TARGET" ; shift ;;
+            build_all)	    _build_all "$TARGET" ; shift ;;
+            push)	    _push "$DOCKER_FILE" "$TARGET" ; shift ;;
             make_push)	    _make_push "$DOCKER_FILE" ; shift ;;
             make_shell)	    _make_shell "$DOCKER_FILE" ; shift ;;
             make_rshell)    _make_rshell "$DOCKER_FILE" ; shift ;;

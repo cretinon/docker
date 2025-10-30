@@ -56,7 +56,7 @@ setup() {
   assert_success
 }
 
-@test "_build_bind9" {
-  run $MY_GIT_DIR/shell/my_warp.sh -d -v --lib docker build --target dockerhub --docker_file dockerfile/Dockerfile.jinade_bind9.x86_64.debian
+@test "_push_base" {
+  run $MY_GIT_DIR/shell/my_warp.sh -d -v --lib docker push --target dockerhub --docker_file dockerfile/Dockerfile.jinade_base.x86_64.debian
   assert_success
 }

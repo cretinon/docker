@@ -1,11 +1,20 @@
-ARG ARCH=frommakefile
-ARG DISTRIB=frommakefile
-ARG DOCKERSRC=frommakefile
-ARG REGISTRY=frommakefile
+ARG ARCH
+ARG DISTRIB
+ARG DOCKERSRC
+ARG REGISTRY
+
+ARG HTTP_PROXY
+ARG HTTPS_PROXY
 
 FROM ${REGISTRY}/${DOCKERSRC}_${DISTRIB}:${ARCH}
+ENV HTTP_PROXY=$HTTP_PROXY
+ENV HTTPS_PROXY=$HTTPS_PROXY
 
 RUN apt-get update && apt-get -y -q install --no-install-recommends openvpn iptables curl ca-certificates net-tools procps lsof iproute2 && apt-get clean && rm -rf /var/cache/apt/* /var/lib/apt/lists/*
+
+# Clear proxy variables for final image
+ENV HTTP_PROXY=
+ENV HTTPS_PROXY=
 
 RUN groupadd vpn
 RUN mkdir /vpn
@@ -15,4 +24,3 @@ ADD http://www.privateinternetaccess.com/openvpn/ca.crt /vpn/
 COPY entrypoint/openvpn.sh /usr/bin/
 
 ENTRYPOINT ["openvpn.sh"]
-
