@@ -411,7 +411,8 @@ _build () {
     esac
 
     #ARCH="$__arch"
-    #docker buildx create --name multiarch --driver docker-container --use
+    #pre req for multiarch
+    docker buildx create --name multiarch --driver docker-container --use
 
     docker buildx build --push --rm --force-rm --compress -f "$1" -t "$__target"/"$__image":"$__distrib" --build-arg DOCKERSRC="$__opsys""_base" --build-arg DISTRIB="$__distrib" --build-arg PUID=0 --build-arg PGID=0 --label org.label-schema.build-date="$(date -u +'%Y-%m-%dT%H:%M:%SZ')" --label org.label-schema.name="$__image" --label org.label-schema.schema-version="1.0" --build-arg REGISTRY="$__target" --build-arg HTTP_PROXY="$__http_proxy" --no-cache --build-arg HTTPS_PROXY="$__https_proxy" --platform linux/arm/v7,linux/arm64/v8,linux/amd64  --output=type=registry,registry.insecure=true .
 
