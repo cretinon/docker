@@ -382,11 +382,11 @@ _build () {
     if [ "$__distrib" = "alpine" ]; then
         __alpine_version="3.22.0"
         if [ "$__image" = "jinade_base" ]; then
-            mkdir -p data \
-                && cd data \
-                && curl -o ./rootfs.tar.gz -SL https://nl.alpinelinux.org/alpine/latest-stable/releases/$__arch/alpine-minirootfs-$__alpine_version-$__arch.tar.gz \
-                && gunzip -f ./rootfs.tar.gz \
-                && cd -
+            mkdir -p data
+            cd data || return
+            curl -o ./rootfs.tar.gz -SL https://nl.alpinelinux.org/alpine/latest-stable/releases/"$__arch"/alpine-minirootfs-"$__alpine_version"-"$__arch".tar.gz
+            gunzip -f ./rootfs.tar.gz
+            cd - || return
         fi
     fi
 
