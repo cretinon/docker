@@ -387,7 +387,7 @@ _build () {
         *) _error "bad target $2 (must be local/dockerhub)"; _func_end ; return 1 ;;
     esac
 
-    docker build --rm --force-rm --compress -f "$1" -t "$__target"/"$__image"_"$__distrib":"$__arch" --build-arg ARCH="$__arch" --build-arg DOCKERSRC="$__opsys""_base" --build-arg DISTRIB="$__distrib" --build-arg PUID=0 --build-arg PGID=0 --label org.label-schema.build-date="$(date -u +'%Y-%m-%dT%H:%M:%SZ')" --label org.label-schema.name="$__image" --label org.label-schema.schema-version="1.0" --build-arg REGISTRY="$__target" --build-arg HTTP_PROXY="$__http_proxy" --no-cache --build-arg HTTPS_PROXY="$__https_proxy" .
+    docker build --rm --force-rm --compress -f "$1" -t "$__target"/"$__image":"$__distrib"_"$__arch" --build-arg ARCH="$__arch" --build-arg DOCKERSRC="$__opsys""_base" --build-arg DISTRIB="$__distrib" --build-arg PUID=0 --build-arg PGID=0 --label org.label-schema.build-date="$(date -u +'%Y-%m-%dT%H:%M:%SZ')" --label org.label-schema.name="$__image" --label org.label-schema.schema-version="1.0" --build-arg REGISTRY="$__target" --build-arg HTTP_PROXY="$__http_proxy" --no-cache --build-arg HTTPS_PROXY="$__https_proxy" .
 
     _func_end
 }
@@ -430,9 +430,9 @@ _push () {
 
     if [ "a$2" = "adockerhub" ]; then docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"; fi
 
-    docker push "$__target"/"$__image"_"$__distrib":"$__arch"
-    docker tag  "$__target"/"$__image"_"$__distrib":"$__arch" "$__target"/"$__image"_"$__distrib":"latest"
-    docker push "$__target"/"$__image"_"$__distrib":"latest"
+    docker push "$__target"/"$__image":"$__distrib"_"$__arch"
+    docker tag  "$__target"/"$__image":"$__distrib"_"$__arch" "$__target"/"$__image":"latest"
+    docker push "$__target"/"$__image":"latest"
 
     if [ "a$2" = "adockerhub" ]; then docker logout ; fi
 
