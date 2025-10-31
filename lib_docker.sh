@@ -379,6 +379,8 @@ _build () {
     _debug "arch:$__arch"
     _debug "distrib:$__distrib"
 
+    if [ "a$2" = "adockerhub" ]; then docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"; fi
+
     if [ "$__distrib" = "alpine" ]; then
         __alpine_version="3.22.0"
         if [ "$__image" = "jinade_base" ]; then
