@@ -1,0 +1,22 @@
+ARG ARCH
+ARG DISTRIB
+ARG DOCKERSRC
+ARG REGISTRY
+
+ARG HTTP_PROXY
+ARG HTTPS_PROXY
+
+FROM ${REGISTRY}/${DOCKERSRC}:${DISTRIB}_${ARCH}
+ENV HTTP_PROXY=$HTTP_PROXY
+ENV HTTPS_PROXY=$HTTPS_PROXY
+
+RUN apk add --no-cache --purge bash bind  bind-tools  net-tools procps && rm -rf /var/cache/apk/*
+
+# Clear proxy variables for final image
+ENV HTTP_PROXY=
+ENV HTTPS_PROXY=
+
+ADD entrypoint/bind9.sh /usr/bin/bind9.sh
+RUN chmod +x /usr/bin/bind9.sh
+
+ENTRYPOINT /usr/bin/bind9.sh
