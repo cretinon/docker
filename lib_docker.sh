@@ -408,7 +408,7 @@ _build () {
 
     #creating buildkit conf file, even if we're in CI
     sudo mkdir -p /etc/buildkit/
-    sudo cat <<EOF > /etc/buildkit/buildkitd.toml
+    sudo cat <<EOF | sudo tee /etc/buildkit/buildkitd.toml
 debug = true
 trace = true
 insecure-entitlements = [ "network.host", "security.insecure", "device" ]
