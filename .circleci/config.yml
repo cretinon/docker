@@ -93,7 +93,7 @@ commands:
     steps:
       - run:
           name: build_all using my_warp
-          command: cd "${HOME}/project/git/docker" ; ${HOME}/project/git/shell/my_warp.sh -d -v --lib docker --target dockerhub  build --docker_file dockerfile/Dockerfile.jinade_base.armhf.debian
+          command: cd "${HOME}/project/git/docker" ; ${HOME}/project/git/shell/my_warp.sh -d -v --lib docker --target dockerhub  build --docker_file dockerfile/Dockerfile.jinade_bind9.x86_64.debian
 
 jobs:
   build-and-test:
