@@ -407,8 +407,8 @@ _build () {
     esac
 
     #creating buildkit conf file, even if we're in CI
-    mkdir -p /etc/buildkit/
-    cat <<EOF > /etc/buildkit/buildkitd.toml
+    sudo mkdir -p /etc/buildkit/
+    sudo cat <<EOF > /etc/buildkit/buildkitd.toml
 debug = true
 trace = true
 insecure-entitlements = [ "network.host", "security.insecure", "device" ]
