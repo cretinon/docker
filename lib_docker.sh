@@ -406,9 +406,9 @@ _build () {
         *) _error "bad target $2 (must be local/dockerhub)"; _func_end ; return 1 ;;
     esac
 
-    if [ "a$2" = "alocal" ]; then
-        mkdir -p /etc/buildkit/
-        cat <<EOF > /etc/buildkit/buildkitd.toml
+    #creating buildkit conf file, even if we're in CI
+    mkdir -p /etc/buildkit/
+    cat <<EOF > /etc/buildkit/buildkitd.toml
 debug = true
 trace = true
 insecure-entitlements = [ "network.host", "security.insecure", "device" ]
@@ -419,7 +419,6 @@ insecure-entitlements = [ "network.host", "security.insecure", "device" ]
 [registry."docker.intranet.local:5000"]
   http = true
 EOF
-    fi
 
     if ! docker container ls | $GREP moby/buildkit 2>/dev/null 1>/dev/null; then
         docker run --rm --privileged multiarch/qemu-user-static:register --reset
