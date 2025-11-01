@@ -368,6 +368,7 @@ _build () {
     local __http_proxy
     local __https_proxy
     local __alpine_version
+    local __output_build
 
     __image=$(echo "$1" | cut -d. -f2)
     __opsys=$(echo "$__image" | cut -d_ -f1)
@@ -392,32 +393,19 @@ _build () {
         fi
     fi
 
-    if [ "$__arch" = "armhf" ]; then
-        docker run --rm --privileged multiarch/qemu-user-static:register --reset
-        mkdir -p data
-        __qemuarch="arm"
-        __qemuvers=$(curl -SL https://api.github.com/repos/multiarch/qemu-user-static/releases/latest | grep tag_name | cut -d: -f2 | cut -d\" -f2)
-        if _filenotexist "./data/x86_64_qemu-$__qemuarch-static.tar.gz" ; then
-            curl -o ./data/x86_64_qemu-"$__qemuarch"-static.tar.gz -SL https://github.com/multiarch/qemu-user-static/releases/download/"$__qemuvers"/x86_64_qemu-"$__qemuarch"-static.tar.gz
-            tar xv -C data/ -f ./data/x86_64_qemu-"$__qemuarch"-static.tar.gz
-        fi
-    fi
+    if ! docker container ls | $GREP moby/buildkit 2>/dev/null 1>/dev/null; then docker run --rm --privileged multiarch/qemu-user-static:register --reset ; fi
+    if ! docker buildx ls | $GREP multiarch 2>/dev/null 1>/dev/null; then docker buildx create --name multiarch --driver docker-container --use ; fi
 
     case "$2" in
-       "local")        __target="docker.intranet.local:5000" ; __http_proxy="http://192.168.2.28:3142" ; __https_proxy="http://192.168.2.28:3142" ;;
+       "local")        __target="docker.intranet.local:5000" ; __http_proxy="http://192.168.2.28:3142" ; __https_proxy="http://192.168.2.28:3142" ; __output_build="type=registry,registry.insecure=true" ;;
        "dockerhub")
            if _notexist "$DOCKER_USERNAME"; then _error "DOCKER_USERNAME EMPTY"; _func_end ; return 1 ; fi
-           __target="$DOCKER_USERNAME" ; __http_proxy="" ; __https_proxy=""
+           __target="$DOCKER_USERNAME" ; __http_proxy="" ; __https_proxy="" ; __output_build="type=registry,registry.insecure=false"
            ;;
         *) _error "bad target $2 (must be local/dockerhub)"; _func_end ; return 1 ;;
     esac
 
-    #ARCH="$__arch"
-    #--output=type=registry,registry.insecure=true .
-    #pre req for multiarch
-    docker buildx create --name multiarch --driver docker-container --use
-
-    docker buildx build --push --rm --force-rm --compress -f "$1" -t "$__target"/"$__image"_"$__distrib" --build-arg DOCKERSRC="$__opsys""_base" --build-arg DISTRIB="$__distrib" --build-arg PUID=0 --build-arg PGID=0 --label org.label-schema.build-date="$(date -u +'%Y-%m-%dT%H:%M:%SZ')" --label org.label-schema.name="$__image" --label org.label-schema.schema-version="1.0" --build-arg REGISTRY="$__target" --build-arg HTTP_PROXY="$__http_proxy" --no-cache --build-arg HTTPS_PROXY="$__https_proxy" --platform linux/arm/v7,linux/arm64/v8,linux/amd64  .
+    docker buildx build --output "$__output_build" --rm --force-rm --compress -f "$1" -t "$__target"/"$__image":"$__distrib" --build-arg DOCKERSRC="$__opsys""_base" --build-arg DISTRIB="$__distrib" --build-arg PUID=0 --build-arg PGID=0 --label org.label-schema.build-date="$(date -u +'%Y-%m-%dT%H:%M:%SZ')" --label org.label-schema.name="$__image" --label org.label-schema.schema-version="1.0" --build-arg REGISTRY="$__target" --build-arg HTTP_PROXY="$__http_proxy" --no-cache --build-arg HTTPS_PROXY="$__https_proxy" --platform linux/arm/v7,linux/arm64/v8,linux/amd64  .
 
     _func_end
 }
