@@ -1,19 +1,27 @@
-ARG ARCH=frommakefile
-ARG DISTRIB=frommakefile
-ARG DOCKERSRC=frommakefile
-ARG REGISTRY=frommakefile
+ARG ARCH
+ARG DISTRIB
+ARG DOCKERSRC
 
-FROM ${REGISTRY}/${DOCKERSRC}-debug_${DISTRIB}:${ARCH}
+ARG HTTP_PROXY
+ARG HTTPS_PROXY
+
+FROM ${ARCH}${DOCKERSRC}:${DISTRIB}
+ENV HTTP_PROXY=$HTTP_PROXY
+ENV HTTPS_PROXY=$HTTPS_PROXY
 
 RUN apt-get update && apt-get -y -q install --no-install-recommends netbase autofs procps nfs-common net-tools gir1.2-xapp-1.0 libavahi-compat-libdnssd1 python3-dbus python3-notify2 pip curl ca-certificates && apt-get clean && rm -rf /var/cache/apt/* /var/lib/apt/lists/*
 
-RUN echo "deb http://deb.debian.org/debian bookworm main contrib non-free" >> /etc/apt/sources.list
+RUN echo "deb http://deb.debian.org/debian trixie main contrib non-free" >> /etc/apt/sources.list
 
 RUN apt-get update && apt-get -y -q install  unrar && apt-get clean && rm -rf /var/cache/apt/* /var/lib/apt/lists/*
 
-RUN echo " deb http://deb.debian.org/debian bookworm-backports main contrib non-free" >> /etc/apt/sources.list
+RUN echo " deb http://deb.debian.org/debian trixie-backports main contrib non-free" >> /etc/apt/sources.list
 
-RUN apt-get update && apt-get -y -q install  -t bookworm-backports sabnzbdplus && apt-get clean && rm -rf /var/cache/apt/* /var/lib/apt/lists/*
+RUN apt-get update && apt-get -y -q install  -t trixie-backports sabnzbdplus && apt-get clean && rm -rf /var/cache/apt/* /var/lib/apt/lists/*
+
+# Clear proxy variables for final image
+ENV HTTP_PROXY=
+ENV HTTPS_PROXY=
 
 ADD entrypoint/sabnzbd.sh /usr/local/sabnzbd.sh
 RUN chmod 755 /usr/local/sabnzbd.sh

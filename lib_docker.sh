@@ -362,7 +362,6 @@ _build () {
 
     local __image
     local __opsys
-    local __arch
     local __distrib
     local __target
     local __http_proxy
@@ -370,14 +369,12 @@ _build () {
     local __alpine_version
     local __output_build
 
-    __image=$(echo "$1" | cut -d. -f2)
-    __opsys=$(echo "$__image" | cut -d_ -f1)
-    __arch=$(echo "$1" | cut -d. -f3)
-    __distrib=$(echo "$1" | cut -d. -f4)
+    __image=$(echo "$1" | cut -d. -f1 | cut -d/ -f2)
+    __opsys=$(echo "$__image" | cut -d_ -f1 | cut -d/ -f2)
+    __distrib=$(echo "$1" | cut -d. -f2)
 
     _debug "image:$__image"
     _debug "opsys:$__opsys"
-    _debug "arch:$__arch"
     _debug "distrib:$__distrib"
 
     if [ "a$2" = "adockerhub" ]; then docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"; fi
@@ -405,6 +402,8 @@ _build () {
            ;;
         *) _error "bad target $2 (must be local/dockerhub)"; _func_end ; return 1 ;;
     esac
+
+    _debug "Going to build=>""$__target"/"$__image":"$__distrib"
 
     #creating buildkit conf file, even if we're in CI
     sudo mkdir -p /etc/buildkit/
@@ -500,12 +499,12 @@ _build_all () {
 
     local __file
 
-    for __file in dockerfile/Dockerfile*; do
+    for __file in dockerfile/*; do
         case $__file in
             *debug*) true;;
             *) _verbose "Building file:$__file"
                _build "$__file" "$1"
-               _push "$__file" "$1"
+#               _push "$__file" "$1"
                ;;
         esac
     done
