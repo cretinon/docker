@@ -1,0 +1,18 @@
+ARG DISTRIB
+ARG DOCKERSRC
+ARG BASE_TAG
+
+FROM ${DISTRIB}:${BASE_TAG}
+ARG DISTRIB
+ARG DOCKERSRC
+ARG TARGETPLATFORM
+ARG HTTP_PROXY
+ARG HTTPS_PROXY
+ENV HTTP_PROXY=$HTTP_PROXY
+ENV HTTPS_PROXY=$HTTPS_PROXY
+
+RUN if [ "$DISTRIB" = "alpine" ]; then apk add --no-cache --purge -uU bash && rm -rf /var/cache/apk/* /tmp/* ; fi
+RUN if [ "$DISTRIB" = "debian" ]; then apt-get update && apt-get upgrade -y && apt-get clean && rm -rf /var/cache/apt/* /var/lib/apt/lists/* ; fi
+
+ENV HTTP_PROXY=
+ENV HTTPS_PROXY=

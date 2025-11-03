@@ -1,0 +1,23 @@
+ARG DISTRIB
+ARG DOCKERSRC
+ARG BASE_TAG
+
+FROM ${DOCKERSRC}:${DISTRIB}
+ARG DISTRIB
+ARG DOCKERSRC
+ARG TARGETPLATFORM
+ARG HTTP_PROXY
+ARG HTTPS_PROXY
+ENV HTTP_PROXY=$HTTP_PROXY
+ENV HTTPS_PROXY=$HTTPS_PROXY
+
+RUN if [ "$DISTRIB" = "debian" ]; then apt-get update && apt-get -y -q install --no-install-recommends bind9 bind9-utils && apt-get clean && rm -rf /var/cache/apt/* /var/lib/apt/lists/* ; fi
+RUN if [ "$DISTRIB" = "alpine" ]; then apk add --no-cache --purge bind bind-tools && rm -rf /var/cache/apk/* ; fi
+
+ENV HTTP_PROXY=
+ENV HTTPS_PROXY=
+
+ADD entrypoint/bind9.sh /usr/bin/bind9.sh
+RUN chmod +x /usr/bin/bind9.sh
+
+ENTRYPOINT /usr/bin/bind9.sh

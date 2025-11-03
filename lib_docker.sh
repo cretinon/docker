@@ -348,7 +348,7 @@ _make_build () {
 }
 
 #
-# usage: _build --docker_file file ($1) --target local/dockerhub ($2)
+# usage: _build --docker_file file ($1) --target local/dockerhub ($2) --distrib debian/alpine ($3)
 #
 _build () {
     _func_start
@@ -356,13 +356,14 @@ _build () {
     if _notexist "$1"; then _error "DOCKER_FILE EMPTY"; _func_end ; return 1 ; fi
     if _filenotexist "$1"; then _error "DOCKER_FILE does not exist"; _func_end ; return 1 ; fi
     if _notexist "$2"; then _error "TARGET EMPTY"; _func_end ; return 1 ; fi
+    if _notexist "$3"; then _error "DISTRIB EMPTY"; _func_end ; return 1 ; fi
 
     _debug "DOCKER_FILE:$1"
     _debug "TARGET:$2"
+    _debug "DISTRIB:$3"
 
     local __image
     local __opsys
-    local __distrib
     local __target
     local __http_proxy
     local __https_proxy
@@ -371,39 +372,39 @@ _build () {
 
     __image=$(echo "$1" | cut -d. -f1 | cut -d/ -f2)
     __opsys=$(echo "$__image" | cut -d_ -f1 | cut -d/ -f2)
-    __distrib=$(echo "$1" | cut -d. -f2)
 
     _debug "image:$__image"
     _debug "opsys:$__opsys"
-    _debug "distrib:$__distrib"
-
-    if [ "a$2" = "adockerhub" ]; then docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"; fi
-
-    if [ "$__distrib" = "alpine" ]; then
-        __alpine_version="3.22.0"
-        if [ "$__image" = "jinade_base" ]; then
-            mkdir -p data
-            cd data || return
-            curl -o ./rootfs.tar.gz -SL https://nl.alpinelinux.org/alpine/latest-stable/releases/"$__arch"/alpine-minirootfs-"$__alpine_version"-"$__arch".tar.gz
-            gunzip -f ./rootfs.tar.gz
-            cd - || return
-        fi
-    fi
 
     case "$2" in
-        "local")        __target="docker.intranet.local:5000" ;
-                        __http_proxy="http://192.168.2.28:3142" ;
-                        __https_proxy="http://192.168.2.28:3142" ;
-                        __output_build="type=registry"",registry.insecure=true"
-                        ;;
+        "local")
+            __target="docker.intranet.local:5000" ;
+            __http_proxy="http://192.168.2.28:3142" ;
+            __https_proxy="http://192.168.2.28:3142" ;
+            __output_build="type=registry"",registry.insecure=true"
+            ;;
        "dockerhub")
            if _notexist "$DOCKER_USERNAME"; then _error "DOCKER_USERNAME EMPTY"; _func_end ; return 1 ; fi
-           __target="$DOCKER_USERNAME" ; __http_proxy="" ; __https_proxy="" ; __output_build="type=registry,registry.insecure=false"
+           docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
+           __target="$DOCKER_USERNAME"
+           __http_proxy=""
+           __https_proxy=""
+           __output_build="type=registry,registry.insecure=false"
            ;;
         *) _error "bad target $2 (must be local/dockerhub)"; _func_end ; return 1 ;;
     esac
 
-    _debug "Going to build=>""$__target"/"$__image":"$__distrib"
+    case "$3" in
+        "debian")
+            __base_tag="stable-slim"
+            ;;
+        "alpine")
+            __base_tag="3.22"
+            ;;
+        *)_error "bad distrib $3 (must be debian/alpine)"; _func_end ; return 1 ;;
+    esac
+
+    _debug "Going to build=>""$__target"/"$__image":"$3"
 
     #creating buildkit conf file, even if we're in CI
     sudo mkdir -p /etc/buildkit/
@@ -429,57 +430,19 @@ EOF
 
    docker buildx create --use --bootstrap --node multiarch --name multiarch --driver docker-container --platform linux/arm/v7,linux/arm64/v8,linux/amd64 --buildkitd-config /etc/buildkit/buildkitd.toml
 
-   docker buildx build --output "$__output_build" --rm --force-rm --compress -f "$1" -t "$__target"/"$__image":"$__distrib" --build-arg DOCKERSRC="$__target"/"$__opsys""_base" --build-arg DISTRIB="$__distrib" --build-arg PUID=0 --build-arg PGID=0 --label org.label-schema.build-date="$(date -u +'%Y-%m-%dT%H:%M:%SZ')" --label org.label-schema.name="$__image" --label org.label-schema.schema-version="1.0" --build-arg REGISTRY="$__target" --build-arg HTTP_PROXY="$__http_proxy" --no-cache --build-arg HTTPS_PROXY="$__https_proxy" --platform linux/arm/v7,linux/arm64/v8,linux/amd64  .
-
-    _func_end
-}
-
-#
-# usage: _push --docker_file file ($1) --target local/dockerhub ($2)
-#
-_push () {
-    _func_start
-
-    if _notexist "$1"; then _error "DOCKER_FILE EMPTY"; _func_end ; return 1 ; fi
-    if _filenotexist "$1"; then _error "DOCKER_FILE does not exist"; _func_end ; return 1 ; fi
-    if _notexist "$2"; then _error "TARGET EMPTY"; _func_end ; return 1 ; fi
-    if _notexist "$DOCKER_USERNAME"; then _error "DOCKER_USERNAME EMPTY"; _func_end ; return 1 ; fi
-    if _notexist "$DOCKER_PASSWORD"; then _error "DOCKER_PASSWORD EMPTY"; _func_end ; return 1 ; fi
-
-    _debug "DOCKER_FILE:$1"
-    _debug "TARGET:$2"
-
-    local __image
-    local __arch
-    local __distrib
-    local __target
-    local __http_proxy
-    local __https_proxy
-
-    __image=$(echo "$1" | cut -d. -f2)
-    __arch=$(echo "$1" | cut -d. -f3)
-    __distrib=$(echo "$1" | cut -d. -f4)
-
-    _debug "image:$__image"
-    _debug "arch:$__arch"
-    _debug "distrib:$__distrib"
-
-    case "$2" in
-       "local")        __target="localhost:5000" ; __http_proxy="http://192.168.2.28:3142" ; __https_proxy="http://192.168.2.28:3142" ;;
-       "dockerhub")    __target="$DOCKER_USERNAME" ; __http_proxy="" ; __https_proxy="" ;;
-        *) _error "bad target $2 (must be local/dockerhub)"; _func_end ; return 1 ;;
-    esac
-
-    if [ "a$2" = "adockerhub" ]; then docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"; fi
-
-    docker push "$__target"/"$__image":"$__distrib"_"$__arch"
-
-    if [ "$__distrib" = "debian" ]; then
-        docker tag  "$__target"/"$__image":"$__distrib"_"$__arch" "$__target"/"$__image":"latest"
-        docker push "$__target"/"$__image":"latest"
-    fi
-
-    if [ "a$2" = "adockerhub" ]; then docker logout ; fi
+   docker buildx build --output "$__output_build" --rm --force-rm --compress -f "$1" -t "$__target"/"$__image":"$3" \
+          --build-arg BASE_TAG="$__base_tag" \
+          --build-arg DOCKERSRC="$__target"/"$__opsys""_base" \
+          --build-arg DISTRIB="$3" \
+          --build-arg PUID=0 \
+          --build-arg PGID=0 \
+          --build-arg HTTP_PROXY="$__http_proxy" \
+          --build-arg HTTPS_PROXY="$__https_proxy" \
+          --label org.label-schema.build-date="$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
+          --label org.label-schema.name="$__image" \
+          --label org.label-schema.schema-version="1.0" \
+          --no-cache \
+          --platform linux/arm/v7,linux/arm64/v8,linux/amd64  .
 
     _func_end
 }
@@ -496,17 +459,18 @@ _build_all () {
     if _notexist "$DOCKER_USERNAME"; then _error "DOCKER_USERNAME EMPTY"; _func_end ; return 1 ; fi
     if _notexist "$DOCKER_PASSWORD"; then _error "DOCKER_PASSWORD EMPTY"; _func_end ; return 1 ; fi
 
-
     local __file
+    local __distrib
 
     for __file in dockerfile/*; do
-        case $__file in
-            *debug*) true;;
-            *) _verbose "Building file:$__file"
-               _build "$__file" "$1"
-#               _push "$__file" "$1"
-               ;;
-        esac
+        for __distrib in "debian" "alpine"; do
+            case $__file in
+                *debug*) true;;
+                *) _verbose "Building file:$__file"
+                   _build "$__file" "$1" "$__distrib"
+                   ;;
+            esac
+        done
     done
 
     _func_end
@@ -564,6 +528,7 @@ _process_lib_docker () {
             --gateway )        GATEWAY=$2 ; shift ; shift ;;
             --docker_file )    DOCKER_FILE=$2 ; shift ; shift ;;
             --target )         TARGET=$2 ; shift ; shift ;;
+            --distrib )        DISTRIB=$2 ; shift ; shift ;;
             -- ) shift ; break ;;
             * ) shift ;;
         esac
@@ -587,9 +552,8 @@ _process_lib_docker () {
             system_reclaim )	         _system_reclaim ; shift ;;
             make_build_all) _make_build_all ; shift ;;
             make_build)	    _make_build "$DOCKER_FILE" ; shift ;;
-            build)	    _build "$DOCKER_FILE" "$TARGET" ; shift ;;
+            build)	    _build "$DOCKER_FILE" "$TARGET" "$DISTRIB" ; shift ;;
             build_all)	    _build_all "$TARGET" ; shift ;;
-            push)	    _push "$DOCKER_FILE" "$TARGET" ; shift ;;
             make_push)	    _make_push "$DOCKER_FILE" ; shift ;;
             make_shell)	    _make_shell "$DOCKER_FILE" ; shift ;;
             make_rshell)    _make_rshell "$DOCKER_FILE" ; shift ;;
