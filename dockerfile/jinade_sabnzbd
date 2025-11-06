@@ -1,0 +1,65 @@
+ARG DISTRIB
+ARG DOCKERSRC
+ARG BASE_TAG
+
+FROM ${DOCKERSRC}:${DISTRIB}
+ARG DISTRIB
+ARG DOCKERSRC
+ARG TARGETPLATFORM
+ARG HTTP_PROXY
+ARG HTTPS_PROXY
+ENV HTTP_PROXY=$HTTP_PROXY
+ENV HTTPS_PROXY=$HTTPS_PROXY
+ARG UNRAR_VERSION=6.2.6
+
+RUN if [ "$DISTRIB" = "debian" ]; then echo "deb http://deb.debian.org/debian trixie main contrib non-free" >> /etc/apt/sources.list && echo " deb http://deb.debian.org/debian trixie-backports main contrib non-free" >> /etc/apt/sources.list ; fi
+RUN if [ "$DISTRIB" = "debian" ]; then apt-get update && apt-get -y -q install --no-install-recommends unrar sabnzbdplus netbase autofs procps nfs-common net-tools gir1.2-xapp-1.0 libavahi-compat-libdnssd1 python3-dbus python3-notify2 pip curl ca-certificates && apt-get clean && rm -rf /var/cache/apt/* /var/lib/apt/lists/* ; fi
+RUN if [ "$DISTRIB" = "alpine" ]; then apk add --no-cache --purge build-base libffi-dev openssl-dev python3-dev 7zip par2cmdline python3 py3-pip autofs procps nfs-utils net-tools curl ca-certificates && rm -rf /var/cache/apk/* ; fi
+
+RUN if [ "$DISTRIB" = "alpine" ]; then echo "**** install unrar from source ****" && \
+  mkdir /tmp/unrar && \
+  curl -o \
+    /tmp/unrar.tar.gz -L \
+    "https://www.rarlab.com/rar/unrarsrc-6.2.6.tar.gz" && \
+  tar xf \
+    /tmp/unrar.tar.gz -C \
+    /tmp/unrar --strip-components=1 && \
+  cd /tmp/unrar && \
+  make && \
+  install -v -m755 unrar /usr/local/bin ; fi
+
+RUN if [ "$DISTRIB" = "alpine" ]; then  echo "**** install sabnzbd ****" && \
+  if [ -z ${SABNZBD_VERSION+x} ]; then \
+    SABNZBD_VERSION=$(curl -s https://api.github.com/repos/sabnzbd/sabnzbd/releases/latest \
+      | awk '/tag_name/{print $4;exit}' FS='[""]'); \
+  fi && \
+  mkdir -p /app/sabnzbd && \
+  curl -o \
+    /tmp/sabnzbd.tar.gz -L \
+    "https://github.com/sabnzbd/sabnzbd/releases/download/${SABNZBD_VERSION}/SABnzbd-${SABNZBD_VERSION}-src.tar.gz" && \
+  tar xf \
+    /tmp/sabnzbd.tar.gz -C \
+    /app/sabnzbd --strip-components=1 && \
+  cd /app/sabnzbd && \
+  python3 -m venv /lsiopy && \
+  pip install -U --no-cache-dir \
+    pip \
+    wheel && \
+  pip install -U --no-cache-dir --find-links https://wheel-index.linuxserver.io/alpine-3.22/ \
+    apprise \
+    pynzb \
+    requests && \
+  pip install -U --no-cache-dir --find-links https://wheel-index.linuxserver.io/alpine-3.22/ -r requirements.txt
+
+ENV HTTP_PROXY=
+ENV HTTPS_PROXY=
+
+ADD entrypoint/sabnzbd.sh /usr/local/sabnzbd.sh
+RUN chmod 755 /usr/local/sabnzbd.sh
+
+RUN mkdir -p /etc/auto.master.d/
+RUN echo "/mnt/nfs        /sabnzbd/auto.syno --ghost,--timeout=60" > /etc/auto.master.d/syno.autofs
+
+EXPOSE 8080/tcp
+
+ENTRYPOINT ["/usr/local/sabnzbd.sh"]

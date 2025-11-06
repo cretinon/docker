@@ -448,6 +448,57 @@ EOF
 }
 
 #
+# usage: _get_image_version --docker_file file ($1) --target local/dockerhub ($2) --distrib debian/alpine ($3)
+#
+
+_get_image_version () {
+    _func_start
+
+    if _notexist "$1"; then _error "DOCKER_FILE EMPTY"; _func_end ; return 1 ; fi
+    if _filenotexist "$1"; then _error "DOCKER_FILE does not exist"; _func_end ; return 1 ; fi
+    if _notexist "$2"; then _error "TARGET EMPTY"; _func_end ; return 1 ; fi
+    if _notexist "$3"; then _error "DISTRIB EMPTY"; _func_end ; return 1 ; fi
+
+    _debug "DOCKER_FILE:$1"
+    _debug "TARGET:$2"
+    _debug "DISTRIB:$3"
+
+    local __image
+    local __token
+
+    __image=$(echo "$1" | cut -d. -f1 | cut -d/ -f2)
+
+    _debug "image:$__image"
+
+    case "$2" in
+        "local")
+            __url="http://docker.intranet.local:5000"
+            __token=""
+            __header="Accept: application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json, application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.docker.distribution.manifest.v2+json"
+            ;;
+        "dockerhub")
+            if _notexist "$DOCKER_USERNAME"; then _error "DOCKER_USERNAME EMPTY"; _func_end ; return 1 ; fi
+            __url="https://registry-1.docker.io"
+            __image="$DOCKER_USERNAME/$__image"
+            __token=$(curl -s "https://auth.docker.io/token?service=registry.docker.io&scope=repository:$__image:pull" | jq -r '.token')
+            __header="Accept: application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json, application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.docker.distribution.manifest.v2+json"
+            ;;
+        *) _error "target must be local or dockerhub"; _func_end ; return 1 ;;
+    esac
+
+    _debug "url:$__url"
+
+    for __manifest in $(_curl "GET" "$__url/v2/$__image/manifests/$3" "$__header" "Authorization: Bearer $__token" | jq .manifests | jq -r .[].digest)
+    do
+        for __digest in $(_curl "GET" "$__url/v2/$__image/manifests/$__manifest" "$__header" "Authorization: Bearer $__token" | jq .config | jq -r .digest)
+        do
+            __resp=$(_curl "GET" "$__url/v2/$__image/blobs/$__digest" "$__header" "Authorization: Bearer $__token")
+            echo "$__resp" | jq -r .config.Labels | $GREP "version"
+        done
+    done | sort -u | cut -d: -f2 | cut -d\" -f2
+}
+
+#
 # usage: _build_all --target local/dockerhub ($1)
 #
 _build_all () {
@@ -552,6 +603,7 @@ _process_lib_docker () {
             system_reclaim )	         _system_reclaim ; shift ;;
             make_build_all) _make_build_all ; shift ;;
             make_build)	    _make_build "$DOCKER_FILE" ; shift ;;
+            get_image_version)	    _get_image_version "$DOCKER_FILE" "$TARGET" "$DISTRIB" ; shift ;;
             build)	    _build "$DOCKER_FILE" "$TARGET" "$DISTRIB" ; shift ;;
             build_all)	    _build_all "$TARGET" ; shift ;;
             make_push)	    _make_push "$DOCKER_FILE" ; shift ;;
