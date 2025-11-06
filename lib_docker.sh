@@ -348,7 +348,7 @@ _make_build () {
 }
 
 #
-# usage: _build --docker_file file ($1) --target local/dockerhub ($2) --distrib debian/alpine ($3)
+# usage: _build --docker_file file ($1) --target local/dockerhub ($2) --distrib debian/alpine ($3) --force true/false ($4)
 #
 _build () {
     _func_start
@@ -371,6 +371,7 @@ _build () {
     local __output_build
     local __dockerfile_version
     local __image_version
+    local __force
 
     __image=$(echo "$1" | cut -d. -f1 | cut -d/ -f2)
     __opsys=$(echo "$__image" | cut -d_ -f1 | cut -d/ -f2)
@@ -379,7 +380,17 @@ _build () {
 
     if _notexist "$__dockerfile_version"; then _error "No version in $1"; _func_end ; return 1 ; fi
 
-    if [ "a$__image_version" = "a$__dockerfile_version" ]; then _warning "trying to build same version as existing in $2 repository. Skipping." ; _func_end ; return 0 ; fi
+    if _notexist "$4"; then __force=false ; else __force="$4" ; fi
+
+    if [ "a$__image_version" = "a$__dockerfile_version" ]; then
+        if [ "a$__force" != "atrue" ]; then
+            _warning "trying to build same version as existing in $2 repository. Skipping."
+            _func_end
+            return 0
+        else
+            _verbose "trying to build same version as existing in $2 repository. But FORCE."
+        fi
+    fi
 
     _debug "image:$__image"
     _debug "opsys:$__opsys"
@@ -593,6 +604,7 @@ _process_lib_docker () {
             --docker_file )    DOCKER_FILE=$2 ; shift ; shift ;;
             --target )         TARGET=$2 ; shift ; shift ;;
             --distrib )        DISTRIB=$2 ; shift ; shift ;;
+            --force )          FORCE=$2 ; shift ; shift ;;
             -- ) shift ; break ;;
             * ) shift ;;
         esac
@@ -617,7 +629,7 @@ _process_lib_docker () {
             make_build_all) _make_build_all ; shift ;;
             make_build)	    _make_build "$DOCKER_FILE" ; shift ;;
             get_image_version)	    _get_image_version "$DOCKER_FILE" "$TARGET" "$DISTRIB" ; shift ;;
-            build)	    _build "$DOCKER_FILE" "$TARGET" "$DISTRIB" ; shift ;;
+            build)	    _build "$DOCKER_FILE" "$TARGET" "$DISTRIB" "$FORCE"; shift ;;
             build_all)	    _build_all "$TARGET" ; shift ;;
             make_push)	    _make_push "$DOCKER_FILE" ; shift ;;
             make_shell)	    _make_shell "$DOCKER_FILE" ; shift ;;

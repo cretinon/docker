@@ -52,6 +52,6 @@ setup() {
 }
 
 @test "_build_base" {
-  run $MY_GIT_DIR/shell/my_warp.sh -d -v --lib docker build  --target dockerhub --distrib alpine --docker_file dockerfile/jinade_base
+  run $MY_GIT_DIR/shell/my_warp.sh -d -v --lib docker build  --target dockerhub --distrib alpine --docker_file dockerfile/jinade_base --force true
   assert_success
 }
