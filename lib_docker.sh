@@ -369,9 +369,17 @@ _build () {
     local __https_proxy
     local __alpine_version
     local __output_build
+    local __dockerfile_version
+    local __image_version
 
     __image=$(echo "$1" | cut -d. -f1 | cut -d/ -f2)
     __opsys=$(echo "$__image" | cut -d_ -f1 | cut -d/ -f2)
+    __dockerfile_version=$($GREP "ARG VERSION=" "$1" | cut -d\" -f2)
+    if ! __image_version=$(_get_image_version "$1" "$2" "$3") ; then _error "something went wrong with get_image_version" ; _func_end ; return 1  ; fi
+
+    if _notexist "$__dockerfile_version"; then _error "No version in $1"; _func_end ; return 1 ; fi
+
+    if [ "a$__image_version" = "a$__dockerfile_version" ]; then _warning "trying to build same version as existing in $2 repository. Skipping." ; _func_end ; return 0 ; fi
 
     _debug "image:$__image"
     _debug "opsys:$__opsys"
@@ -440,7 +448,7 @@ EOF
           --build-arg HTTPS_PROXY="$__https_proxy" \
           --label org.label-schema.build-date="$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
           --label org.label-schema.name="$__image" \
-          --label org.label-schema.schema-version="1.0" \
+          --label org.label-schema.schema-version="$__dockerfile_version" \
           --no-cache \
           --platform linux/arm/v7,linux/arm64/v8,linux/amd64  .
 
@@ -469,6 +477,11 @@ _get_image_version () {
     __image=$(echo "$1" | cut -d. -f1 | cut -d/ -f2)
 
     _debug "image:$__image"
+
+    case "$3" in
+        debian|alpine) true;;
+        *) _error "distrib must be debian or alpine"; _func_end ; return 1 ;;
+    esac
 
     case "$2" in
         "local")
