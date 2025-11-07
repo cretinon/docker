@@ -571,7 +571,7 @@ _process_lib_docker () {
             --gateway )        __gateway=$2           ; shift ; shift         ;;
             --docker_file )    __docker_file=$2       ; shift ; shift         ;;
             --target )         __target=$2            ; shift ; shift         ;;
-            --distrib )        __ditrib=$2            ; shift ; shift         ;;
+            --distrib )        __distrib=$2           ; shift ; shift         ;;
             --force )          __force=$2             ; shift ; shift         ;;
             -- )                                        shift ;         break ;;
             * )                                         shift                 ;;
@@ -594,9 +594,9 @@ _process_lib_docker () {
             container_list )	                  _container_list                                                                               ; return $? ;;
             system_df )	                          _system_df                                                                                    ; return $? ;;
             system_reclaim )	                  _system_reclaim                                                                               ; return $? ;;
-            get_image_version)	                  _get_image_version                     "$__docker_file" "$__target" "$__target"               ; return $? ;;
-            build)	                          _build                                 "$__docker_file" "$__target" "$__target" "$__target"   ; return $? ;;
-            build_all)	                          _build_all                             "$__target"                                            ; return $? ;;
+            get_image_version)	                  _get_image_version                     "$__docker_file" "$__target" "$__distrib"              ; return $? ;;
+            build)	                          _build                                 "$__docker_file" "$__target" "$__distrib" "$__force"   ; return $? ;;
+            build_all)	                          _build_all                             "$__target" "$__force"                                 ; return $? ;;
             make_shell)	                          _make_shell                            "$__docker_file"                                       ; return $? ;;
             make_rshell)                          _make_rshell                           "$__docker_file"                                       ; return $? ;;
             make_start)	                          _make_start                            "$__docker_file"                                       ; return $? ;;
