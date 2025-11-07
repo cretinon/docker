@@ -55,8 +55,6 @@ ExecStart=/usr/bin/dockerd" > /etc/systemd/system/docker.service.d/override.conf
             * ) echo "Please answer Y or N.";;
         esac
     done
-
-    echo "DOCKER_DIR=\"$MAIN_DIR/docker\"" > "$CONF_DIR"/docker.conf
 }
 
 ####################################################################################################
@@ -254,7 +252,7 @@ _make_action () {
 
     if _notexist "$2"; then _error "docker_file EMPTY"; _func_end ; return 1 ; fi
     if _filenotexist "$2"; then _error "docker_file does not exist"; _func_end ; return 1 ; fi
-    if _workingdir_isnot "$DOCKER_DIR"; then _error "running make_build outside of $DOCKER_DIR is not supported"; _func_end ; return 1 ; fi
+    if _workingdir_isnot "$MY_GIT_DIR/docker"; then _error "running make_build outside of $MY_GIT_DIR/docker is not supported"; _func_end ; return 1 ; fi
 
     _debug "docker_file:$2"
     _debug "docker_file exist:$2"
@@ -331,20 +329,6 @@ _make_rshell () {
 #
 _make_shell () {
     _make_action "shell" "$1"
-}
-
-#
-# usage: _make_push --docker_file file ($1)
-#
-_make_push () {
-    _make_action "push" "$1"
-}
-
-#
-# usage: _make_build --docker_file file ($1)
-#
-_make_build () {
-    _make_action "build" "$1"
 }
 
 #
@@ -469,7 +453,6 @@ EOF
 #
 # usage: _get_image_version --docker_file file ($1) --target local/dockerhub ($2) --distrib debian/alpine ($3)
 #
-
 _get_image_version () {
     _func_start
 
@@ -523,26 +506,36 @@ _get_image_version () {
 }
 
 #
-# usage: _build_all --target local/dockerhub ($1)
+# usage: _build_all --target local/dockerhub ($1) --force true/false ($2)
 #
 _build_all () {
     _func_start
 
-    if _workingdir_isnot "$DOCKER_DIR"; then _error "running _build_all outside of $DOCKER_DIR is not supported"; _func_end; return 1 ; fi
+    if _workingdir_isnot "$MY_GIT_DIR/docker" ; then _error "running _build_all outside of $MY_GIT_DIR/docker is not supported"; _func_end; return 1 ; fi
 
     if _notexist "$1"; then _error "TARGET EMPTY"; _func_end ; return 1 ; fi
-    if _notexist "$DOCKER_USERNAME"; then _error "DOCKER_USERNAME EMPTY"; _func_end ; return 1 ; fi
-    if _notexist "$DOCKER_PASSWORD"; then _error "DOCKER_PASSWORD EMPTY"; _func_end ; return 1 ; fi
+
+    case "$1" in
+        "local") true ;;
+        "dockerhub")
+            if _notexist "$DOCKER_USERNAME"; then _error "DOCKER_USERNAME EMPTY"; _func_end ; return 1 ; fi
+            if _notexist "$DOCKER_PASSWORD"; then _error "DOCKER_PASSWORD EMPTY"; _func_end ; return 1 ; fi
+            ;;
+        *) _error "target must be local or dockerhub"; _func_end ; return 1 ;;
+    esac
 
     local __file
     local __distrib
+    local __force
+
+    if _notexist "$2"; then __force=false ; else __force="$2" ; fi
 
     for __file in dockerfile/*; do
         for __distrib in "debian" "alpine"; do
             case $__file in
                 *debug*) true;;
                 *) _verbose "Building file:$__file"
-                   _build "$__file" "$1" "$__distrib"
+                   _build "$__file" "$1" "$__distrib" "$__force"
                    ;;
             esac
         done
@@ -551,93 +544,65 @@ _build_all () {
     _func_end
 }
 
-#
-# usage: _make_build_all
-#
-_make_build_all () {
-    _func_start
-
-    if _workingdir_isnot "$DOCKER_DIR"; then _error "running make_build outside of $DOCKER_DIR is ot supported"; _func_end; return 1 ; fi
-
-    local __file
-
-    for __file in dockerfile/Dockerfile*; do
-        case $__file in
-            *debug*) true;;
-            *) _verbose "Building file:$__file"
-               _make_build "$__file"
-               _make_push "$__file"
-               ;;
-        esac
-    done
-
-    for __file in dockerfile/Dockerfile*; do
-        case $__file in
-            *debug*) _verbose "Building file:$__file"
-                     _make_build "$__file"
-                     _make_push "$__file"
-                     ;;
-            *) ;;
-        esac
-    done
-
-    _func_end
-}
-
-
 ####################################################################################################
 ############################################# PROCESS ##############################################
 ####################################################################################################
 _process_lib_docker () {
-    _load_conf "$MY_GIT_DIR/docker/conf/docker.conf"
-
     eval set -- "$@"
+
+    local __container_name
+    local __network_name
+    local __volume_name
+    local __driver
+    local __subnet
+    local __gateway
+    local __docker_file
+    local __target
+    local __distrib
+    local __force
 
     while true ; do
         case "$1" in
-            --container_name ) CONTAINER_NAME=$2 ; shift ; shift ;;
-            --network_name )   NETWORK_NAME=$2 ; shift ; shift ;;
-            --volume_name )    VOLUME_NAME=$2 ; shift ; shift ;;
-            --driver )         DRIVER=$2 ; shift ; shift ;;
-            --subnet )         SUBNET=$2 ; shift ; shift ;;
-            --gateway )        GATEWAY=$2 ; shift ; shift ;;
-            --docker_file )    DOCKER_FILE=$2 ; shift ; shift ;;
-            --target )         TARGET=$2 ; shift ; shift ;;
-            --distrib )        DISTRIB=$2 ; shift ; shift ;;
-            --force )          FORCE=$2 ; shift ; shift ;;
-            -- ) shift ; break ;;
-            * ) shift ;;
+            --container_name ) __container_name=$2    ; shift ; shift         ;;
+            --network_name )   __network_name=$2      ; shift ; shift         ;;
+            --volume_name )    __volume_name=$2       ; shift ; shift         ;;
+            --driver )         __driver=$2            ; shift ; shift         ;;
+            --subnet )         __subnet=$2            ; shift ; shift         ;;
+            --gateway )        __gateway=$2           ; shift ; shift         ;;
+            --docker_file )    __docker_file=$2       ; shift ; shift         ;;
+            --target )         __target=$2            ; shift ; shift         ;;
+            --distrib )        __ditrib=$2            ; shift ; shift         ;;
+            --force )          __force=$2             ; shift ; shift         ;;
+            -- )                                        shift ;         break ;;
+            * )                                         shift                 ;;
         esac
     done
 
     while true ; do
         case "$1" in
-            install ) _install_docker ; shift ;;
-            compose_file_from_running_container ) _compose_file_from_running_container "$CONTAINER_NAME" ; shift ;;
-            network_list )               _network_list ; shift ;;
-            network_create )	         _network_create "$NETWORK_NAME" "$DRIVER" "$SUBNET" "$GATEWAY" ; shift ;;
-            volume_list )	         _volume_list  ; shift ;;
-            volume_create )	         _volume_create "$VOLUME_NAME" ; shift ;;
-            volume_remove )	         _volume_remove "$VOLUME_NAME" ; shift ;;
-            network_remove )	         _network_remove "$NETWORK_NAME" ; shift ;;
-            container_filelog_show )     _container_filelog_show ; shift ;;
-            container_filelog_truncate ) _container_filelog_truncate ; shift ;;
-            container_log_show )	 _container_log_show "$CONTAINER_NAME" ; shift ;;
-            container_list )	         _container_list ; shift ;;
-            system_df )	                 _system_df ; shift ;;
-            system_reclaim )	         _system_reclaim ; shift ;;
-            make_build_all) _make_build_all ; shift ;;
-            make_build)	    _make_build "$DOCKER_FILE" ; shift ;;
-            get_image_version)	    _get_image_version "$DOCKER_FILE" "$TARGET" "$DISTRIB" ; shift ;;
-            build)	    _build "$DOCKER_FILE" "$TARGET" "$DISTRIB" "$FORCE"; shift ;;
-            build_all)	    _build_all "$TARGET" ; shift ;;
-            make_push)	    _make_push "$DOCKER_FILE" ; shift ;;
-            make_shell)	    _make_shell "$DOCKER_FILE" ; shift ;;
-            make_rshell)    _make_rshell "$DOCKER_FILE" ; shift ;;
-            make_start)	    _make_start "$DOCKER_FILE" ; shift ;;
-            make_stop)	    _make_stop "$DOCKER_FILE" ; shift ;;
+            install )                             _install_docker                                                                               ; return $? ;;
+            compose_file_from_running_container ) _compose_file_from_running_container   "$__container_name"                                    ; return $? ;;
+            network_list )                        _network_list                                                                                 ; return $? ;;
+            network_create )	                  _network_create                        "$__network_name" "$__driver" "$__subnet" "$__gateway" ; return $? ;;
+            volume_list )	                  _volume_list                                                                                  ; return $? ;;
+            volume_create )	                  _volume_create                         "$__volume_name"                                       ; return $? ;;
+            volume_remove )	                  _volume_remove                         "$__volume_name"                                       ; return $? ;;
+            network_remove )	                  _network_remove                        "$__network_name"                                      ; return $? ;;
+            container_filelog_show )              _container_filelog_show                                                                       ; return $? ;;
+            container_filelog_truncate )          _container_filelog_truncate                                                                   ; return $? ;;
+            container_log_show )                  _container_log_show                    "$__container_name"                                    ; return $? ;;
+            container_list )	                  _container_list                                                                               ; return $? ;;
+            system_df )	                          _system_df                                                                                    ; return $? ;;
+            system_reclaim )	                  _system_reclaim                                                                               ; return $? ;;
+            get_image_version)	                  _get_image_version                     "$__docker_file" "$__target" "$__target"               ; return $? ;;
+            build)	                          _build                                 "$__docker_file" "$__target" "$__target" "$__target"   ; return $? ;;
+            build_all)	                          _build_all                             "$__target"                                            ; return $? ;;
+            make_shell)	                          _make_shell                            "$__docker_file"                                       ; return $? ;;
+            make_rshell)                          _make_rshell                           "$__docker_file"                                       ; return $? ;;
+            make_start)	                          _make_start                            "$__docker_file"                                       ; return $? ;;
+            make_stop)	                          _make_stop                             "$__docker_file"                                       ; return $? ;;
             -- ) shift ;;
-            *)   if [ "a$1" != "a" ]; then _warning "Function $1 does not exist" ; _usage ; break ; else break; fi ;;
+            *) if [ "a$1" != "a" ]; then return 1 ;  else break; fi ;;
         esac
     done
 }

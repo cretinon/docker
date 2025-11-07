@@ -1,0 +1,25 @@
+ARG VERSION="1.1"
+ARG DISTRIB
+ARG DOCKERSRC
+ARG BASE_TAG
+
+FROM ${DOCKERSRC}:${DISTRIB}
+ARG DISTRIB
+ARG DOCKERSRC
+ARG TARGETPLATFORM
+ARG HTTP_PROXY
+ARG HTTPS_PROXY
+ENV HTTP_PROXY=$HTTP_PROXY
+ENV HTTPS_PROXY=$HTTPS_PROXY
+
+RUN if [ "$DISTRIB" = "alpine" ]; then apk add --no-cache --purge curl ca-certificates && rm -rf /var/cache/apk/* /tmp/* ; fi
+RUN if [ "$DISTRIB" = "debian" ]; then apt-get update && apt-get -y -q install --no-install-recommends curl ca-certificates && apt-get clean && rm -rf /var/cache/apt/* /var/lib/apt/lists/* ; fi
+
+# Clear proxy variables for final image
+ENV HTTP_PROXY=
+ENV HTTPS_PROXY=
+
+ADD entrypoint/check_my_ip.sh /usr/local/check_my_ip.sh
+RUN chmod +x /usr/local/check_my_ip.sh
+
+ENTRYPOINT /usr/local/check_my_ip.sh
