@@ -9,52 +9,19 @@
 # usage: _install
 #
 _install_docker () {
-    local __answer
+    _func_start
 
+    _warning ""
     _warning "If you'r using apt-cacher-ng as proxy, be sure you have something like :"
     _warning "    PassThroughPattern: ^download\.docker\.com:443$"
     _warning "in your /etc/apt-cacher-ng/acng.conf then /etc/init.d/apt-cacher-ng restart"
     _warning ""
 
-    while true; do
-        read -r -p "Continue ? (y/N)" __answer
-        case $__answer in
-            [Yy] )
-                apt-get update
-                apt-get install apt-transport-https ca-certificates curl gnupg2 software-properties-common -y
-                curl -fsSL https://download.docker.com/linux/debian/gpg | apt-key add -
-                echo "deb [arch=amd64] https://download.docker.com/linux/debian $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list
-                apt-get update
-                apt-get install docker-ce docker-ce-cli containerd.io -y
-                apt-get clean
+    if ! _func_exist "_playbook_localhost_docker" ; then _error "lib_ansible not installed" ; _func_end ; return 1 ; fi
 
-                mkdir -p /etc/docker/
-                echo "{
-  \"hosts\": [\"tcp://0.0.0.0:2375\", \"unix:///var/run/docker.sock\"],
-  \"dns-search\": [\"intranet.local\"]
-}
-" > /etc/docker/daemon.json
+    _playbook_localhost_docker
 
-                mkdir /etc/systemd/system/docker.service.d/
-
-                echo "[Service]
-ExecStart=
-ExecStart=/usr/bin/dockerd" > /etc/systemd/system/docker.service.d/override.conf
-
-                systemctl daemon-reload
-                systemctl restart docker.service
-                break
-                ;;
-            [Nn] )
-                echo "Doing nothing"
-                break
-                ;;
-            "" )
-                break
-                ;;
-            * ) echo "Please answer Y or N.";;
-        esac
-    done
+    _func_end
 }
 
 ####################################################################################################
@@ -219,7 +186,6 @@ _system_reclaim () {
 ####################################################################################################
 ############################################ CONTAINER #############################################
 ####################################################################################################
-
 #
 # usage: _compose_file_from_running_container --container_name name ($1)
 #
