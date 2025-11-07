@@ -338,7 +338,7 @@ _build () {
     _func_start
 
     if _notexist "$1"; then _error "DOCKER_FILE EMPTY"; _func_end ; return 1 ; fi
-    if _filenotexist "$1"; then _error "DOCKER_FILE does not exist"; _func_end ; return 1 ; fi
+    if _filenotexist "$1"; then _error "DOCKER_FILE:$1 does not exist"; _func_end ; return 1 ; fi
     if _notexist "$2"; then _error "TARGET EMPTY"; _func_end ; return 1 ; fi
     if _notexist "$3"; then _error "DISTRIB EMPTY"; _func_end ; return 1 ; fi
 
