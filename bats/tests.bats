@@ -16,6 +16,13 @@ setup() {
     load '/usr/lib/bats/bats-assert/load'
 }
 
+####################################################################################################
+############################################## INSTALL #############################################
+####################################################################################################
+@test "_install_docker" {
+  run $MY_GIT_DIR/shell/my_warp.sh --lib docker install
+  assert_failure
+}
 
 ####################################################################################################
 ########################################### DOCKER ADMIN ###########################################
@@ -24,6 +31,11 @@ setup() {
 @test "_volume_create" {
   run $MY_GIT_DIR/shell/my_warp.sh --lib docker volume_create --volume_name testvol
   assert_success
+}
+
+@test "_volume_create again" {
+  run $MY_GIT_DIR/shell/my_warp.sh --lib docker volume_create --volume_name testvol
+  assert_failure
 }
 
 @test "_volume_list" {
@@ -36,9 +48,19 @@ setup() {
   assert_success
 }
 
+@test "_volume_remove again" {
+  run $MY_GIT_DIR/shell/my_warp.sh --lib docker volume_remove --volume_name testvol
+  assert_failure
+}
+
 @test "_network_create" {
   run $MY_GIT_DIR/shell/my_warp.sh --lib docker network_create --network_name testnet --driver bridge --subnet 172.254.0.0/16 --gateway 172.254.0.1
   assert_success
+}
+
+@test "_network_create again" {
+  run $MY_GIT_DIR/shell/my_warp.sh --lib docker network_create --network_name testnet --driver bridge --subnet 172.254.0.0/16 --gateway 172.254.0.1
+  assert_failure
 }
 
 @test "_network_list" {
@@ -50,6 +72,22 @@ setup() {
   run $MY_GIT_DIR/shell/my_warp.sh --lib docker network_remove --network_name testnet
   assert_success
 }
+
+@test "_network_remove again" {
+  run $MY_GIT_DIR/shell/my_warp.sh --lib docker network_remove --network_name testnet
+  assert_failure
+}
+
+@test "_system_df" {
+  run $MY_GIT_DIR/shell/my_warp.sh --lib docker system_df
+  assert_output --partial "Containers"
+}
+
+@test "_system_reclaim" {
+  run $MY_GIT_DIR/shell/my_warp.sh --lib docker system_reclaim
+  assert_success
+}
+
 
 @test "_build_base" {
   run cd $MY_GIT_DIR/docker && $MY_GIT_DIR/shell/my_warp.sh -d -v --lib docker build --target dockerhub --distrib alpine --docker_file dockerfile/jinade_base --force true && cd -

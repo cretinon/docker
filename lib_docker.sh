@@ -38,7 +38,7 @@ _volume_create () {
     _debug "volume_name:$1"
 
     if docker volume ls | $GREP "$1" > /dev/nulll; then
-        _warning "volume already exist"
+        _warning "volume already exist" ; _func_end ; return 1
     else
         docker volume create "$1"
     fi
@@ -70,7 +70,7 @@ _volume_remove () {
     if docker volume ls | $GREP "$1" > /dev/nulll; then
         docker volume remove "$1"
     else
-        _warning "volume doesnt exist"
+        _warning "volume doesnt exist" ; _func_end ; return 1
     fi
 
     _func_end
@@ -93,7 +93,7 @@ _network_create () {
     _debug "gateway:$4"
 
     if _network_list | $GREP -w "$1" > /dev/null; then
-        _warning "network already exist"
+        _warning "network already exist" ; _func_end ; return 1
     else
         docker network create -d "$2" --subnet="$3" --gateway="$4" "$1"
     fi
@@ -122,7 +122,11 @@ _network_remove () {
 
     _debug "network_name:$1"
 
-    docker network remove "$1"
+    if docker network list | $GREP -w "$1" > /dev/null; then
+        docker network remove "$1"
+    else
+        _warning "network alreadydoesnt exist" ; _func_end ; return 1
+    fi
 
     _func_end
 }
@@ -131,15 +135,26 @@ _network_remove () {
 # usage: _system_df
 #
 _system_df () {
+    _func_start
+
     docker system df
+
+    _func_end
 }
 
 #
 # usage: _system_reclaim
 #
 _system_reclaim () {
-    #docker system prune -a -f
-    docker system prune -a
+    _func_start
+
+    local __return
+
+    docker system prune -a -f
+    __return=$?
+
+    _func_end
+    return $__return
 }
 
 #
