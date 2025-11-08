@@ -88,6 +88,25 @@ setup() {
   assert_success
 }
 
+@test "_container_start" {
+  run cd $MY_GIT_DIR/docker && $MY_GIT_DIR/shell/my_warp.sh -d -v --lib docker container_start --docker_file dockerfile/jinade_check_my_ip --target dockerhub --distrib debian && cd -
+  assert_success
+}
+
+@test "_container_list" {
+  run $MY_GIT_DIR/shell/my_warp.sh -d -v --lib docker container_list
+  assert_output --partial "jinade_check_my_ip running"
+}
+
+@test "_container_stop" {
+  run cd $MY_GIT_DIR/docker && $MY_GIT_DIR/shell/my_warp.sh -d -v --lib docker container_stop --docker_file dockerfile/jinade_check_my_ip && cd -
+  assert_success
+}
+
+@test "_container_list again" {
+  run $MY_GIT_DIR/shell/my_warp.sh -d -v --lib docker container_list
+  assert_output --partial "jinade_check_my_ip exited"
+}
 
 @test "_build_base" {
   run cd $MY_GIT_DIR/docker && $MY_GIT_DIR/shell/my_warp.sh -d -v --lib docker build --target dockerhub --distrib alpine --docker_file dockerfile/jinade_base --force true && cd -
