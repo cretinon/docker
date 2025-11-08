@@ -37,7 +37,7 @@ _volume_create () {
 
     _debug "volume_name:$1"
 
-    if docker volume ls | $GREP "$1" > /dev/nulll; then
+    if docker volume ls | $GREP "$1" > /dev/null; then
         _warning "volume already exist" ; _func_end ; return 1
     else
         docker volume create "$1"
@@ -67,7 +67,7 @@ _volume_remove () {
 
     _debug "volume_name:$1"
 
-    if docker volume ls | $GREP "$1" > /dev/nulll; then
+    if docker volume ls | $GREP "$1" > /dev/null; then
         docker volume remove "$1"
     else
         _warning "volume doesnt exist" ; _func_end ; return 1
