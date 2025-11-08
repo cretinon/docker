@@ -128,12 +128,51 @@ _network_remove () {
 }
 
 #
+# usage: _system_df
+#
+_system_df () {
+    docker system df
+}
+
+#
+# usage: _system_reclaim
+#
+_system_reclaim () {
+    #docker system prune -a -f
+    docker system prune -a
+}
+
+#
+# usage: _compose_file_from_running_container --container_name name ($1)
+#
+_compose_file_from_running_container () {
+    _func_start
+
+    if _notexist "$1"; then _error "container_name EMPTY"; _func_end ; return 1 ; fi
+
+    _debug "container_name:$1"
+
+    echo ""
+    echo "####"
+    echo "paste it to https://www.composerize.com/"
+    echo "####"
+    echo ""
+
+    docker run --rm -ti -v /var/run/docker.sock:/var/run/docker.sock bcicen/docker-replay -p "$1"
+
+    _func_end
+}
+
+####################################################################################################
+############################################ CONTAINER #############################################
+####################################################################################################
+#
 # usage: _container_list
 #
 _container_list () {
     _func_start
 
-    docker ps --format json | jq -M -r ' .Names'
+    docker ps -a --format json | jq -M -r '.Names + " " + .State'
 
     _func_end
 }
@@ -169,132 +208,173 @@ _container_filelog_truncate () {
 }
 
 #
-# usage: _system_df
+# usage: _container_start --docker_file file ($1) --target local/dockerhub ($2) --distrib debian/alpine ($3)
 #
-_system_df () {
-    docker system df
-}
-
-#
-# usage: _system_reclaim
-#
-_system_reclaim () {
-    #docker system prune -a -f
-    docker system prune -a
-}
-
-####################################################################################################
-############################################ CONTAINER #############################################
-####################################################################################################
-#
-# usage: _compose_file_from_running_container --container_name name ($1)
-#
-_compose_file_from_running_container () {
+_container_start () {
     _func_start
 
-    if _notexist "$1"; then _error "container_name EMPTY"; _func_end ; return 1 ; fi
+    if _notexist "$1"; then _error "DOCKER_FILE EMPTY"; _func_end ; return 1 ; fi
+    if _filenotexist "$1"; then _error "DOCKER_FILE:$1 does not exist"; _func_end ; return 1 ; fi
+    if _notexist "$2"; then _error "TARGET EMPTY"; _func_end ; return 1 ; fi
+    if _notexist "$3"; then _error "DISTRIB EMPTY"; _func_end ; return 1 ; fi
 
-    _debug "container_name:$1"
-
-    echo ""
-    echo "####"
-    echo "paste it to https://www.composerize.com/"
-    echo "####"
-    echo ""
-
-    docker run --rm -ti -v /var/run/docker.sock:/var/run/docker.sock bcicen/docker-replay -p "$1"
-
-    _func_end
-}
-
-####################################################################################################
-############################################## IMAGES ##############################################
-####################################################################################################
-#
-# _make_action action ($1) docker_file ($2)
-#
-_make_action () {
-    _func_start
-
-    if _notexist "$2"; then _error "docker_file EMPTY"; _func_end ; return 1 ; fi
-    if _filenotexist "$2"; then _error "docker_file does not exist"; _func_end ; return 1 ; fi
-    if _workingdir_isnot "$MY_GIT_DIR/docker"; then _error "running make_build outside of $MY_GIT_DIR/docker is not supported"; _func_end ; return 1 ; fi
-
-    _debug "docker_file:$2"
-    _debug "docker_file exist:$2"
-
+    _debug "DOCKER_FILE:$1"
+    _debug "TARGET:$2"
+    _debug "DISTRIB:$3"
 
     local __image
-    local __opsys
-    local __svcname
-    local __arch
-    local __distrib
+    local __target
+    local __hostname
+    local __pgid
+    local __puid
 
-    __image=$(echo "$2" | cut -d. -f2)
-    __opsys=$(echo "$__image" | cut -d_ -f1)
-    __svcname=$(echo "$__image" | cut -d_ -f2-99)
-    __arch=$(echo "$2" | cut -d. -f3)
-    __distrib=$(echo "$2" | cut -d. -f4)
+    __image=$(echo "$1" | cut -d. -f1 | cut -d/ -f2)
+    __hostname=$(echo "$__image" | cut -d_ -f2)
+    __pgid=$(id -g)
+    __puid=$(id -u)
 
-    _debug "image:$__image"
-    _debug "opsys:$__opsys"
-    _debug "svcname:$__svcname"
-    _debug "arch:$__arch"
-    _debug "distrib:$__distrib"
+    _debug "IMAGE:$__image"
+    _debug "HOSTNAME:$__hostname"
 
-    if $VERBOSE; then
-        case $1 in
-            build|push|shell|rshell|start|stop)
-                if ! make "$1" ARCH="$__arch" DISTRIB="$__distrib" OPSYS="$__opsys" SVCNAME="$__svcname"; then
-                    _error "'make $1 ARCH=$__arch DISTRIB=$__distrib OPSYS=$__opsys SVCNAME=$__svcname' goes wrong, stop here" ; _func_end ; return 1
-                fi
-                ;;
-            *)
-                    _error "Action $1 not defined" ; _func_end ; return 1
-                    ;;
-        esac
+    case "$2" in
+        "local")
+            __target="docker.intranet.local:5000" ;
+            ;;
+        "dockerhub")
+           if _notexist "$DOCKER_USERNAME"; then _error "DOCKER_USERNAME EMPTY"; _func_end ; return 1 ; fi
+           __target="$DOCKER_USERNAME"
+           ;;
+        *) _error "bad target $2 (must be local/dockerhub)"; _func_end ; return 1 ;;
+    esac
+
+    if _container_list | $GREP -w "$__image" | $GREP -w "exited" > /dev/null ; then
+        _warning "Can't start, container exist, but was exited, restarting"
+        docker restart "$__image" > /dev/null
     else
-        case $1 in
-            build|push|shell|rshell|start|stop)
-                if ! make "$1" ARCH="$__arch" DISTRIB="$__distrib" OPSYS="$__opsys" SVCNAME="$__svcname" 1>/dev/null 2>/dev/null; then
-                    _error "'make $1 ARCH=$__arch DISTRIB=$__distrib OPSYS=$__opsys SVCNAME=$__svcname' goes wrong, run again with -v" ; _func_end ; return 1
-                fi
-                ;;
-            *)
-                _error "Action $1 not defined" ; _func_end ; return 1
-                ;;
-        esac
+        if _container_list | $GREP -w "$__image" | $GREP -w "running" > /dev/null ; then
+            _warning "Can't start, container exist, and was exited, restarting"
+            docker restart "$__image" > /dev/null
+        else
+            docker run -d --name "$__image" --hostname "$__hostname" -e PGID="$__pgid" -e PUID="$__puid" "$__target"/"$__image":"$3" > /dev/null
+        fi
     fi
 
     _func_end
 }
 
 #
-# usage: _make_start --docker_file file ($1)
+# usage: _container_stop --docker_file file ($1)
 #
-_make_start () {
-    _make_action "start" "$1"
+_container_stop () {
+    _func_start
+
+    if _notexist "$1"; then _error "DOCKER_FILE EMPTY"; _func_end ; return 1 ; fi
+    if _filenotexist "$1"; then _error "DOCKER_FILE:$1 does not exist"; _func_end ; return 1 ; fi
+
+    _debug "DOCKER_FILE:$1"
+
+    local __image
+
+    __image=$(echo "$1" | cut -d. -f1 | cut -d/ -f2)
+
+    _debug "IMAGE:$__image"
+
+    if _container_list | $GREP -w "$__image" | $GREP -w "exited" > /dev/null ; then
+        _warning "Can't stop, container exist, but was already exited, doing nothing"
+    else
+        if _container_list | $GREP -w "$__image" | $GREP -w "running" > /dev/null ; then
+            docker container stop "$__image" > /dev/null
+        else
+            _warning "Can't stop, container doesn't exist, doing nothing"
+        fi
+    fi
+
+    _func_end
 }
 
 #
-# usage: _make_stop --docker_file file ($1)
+# usage: _container_shell --docker_file file ($1) --target local/dockerhub ($2) --distrib debian/alpine ($3)
 #
-_make_stop () {
-    _make_action "stop" "$1"
+_container_shell () {
+    _func_start
+
+    if _notexist "$1"; then _error "DOCKER_FILE EMPTY"; _func_end ; return 1 ; fi
+    if _filenotexist "$1"; then _error "DOCKER_FILE:$1 does not exist"; _func_end ; return 1 ; fi
+    if _notexist "$2"; then _error "TARGET EMPTY"; _func_end ; return 1 ; fi
+    if _notexist "$3"; then _error "DISTRIB EMPTY"; _func_end ; return 1 ; fi
+
+    _debug "DOCKER_FILE:$1"
+    _debug "TARGET:$2"
+    _debug "DISTRIB:$3"
+
+    local __image
+    local __target
+    local __hostname
+    local __pgid
+    local __puid
+
+    __image=$(echo "$1" | cut -d. -f1 | cut -d/ -f2)
+    __hostname=$(echo "$__image" | cut -d_ -f2)
+    __pgid=$(id -g)
+    __puid=$(id -u)
+
+    _debug "IMAGE:$__image"
+    _debug "HOSTNAME:$__hostname"
+
+    case "$2" in
+        "local")
+            __target="docker.intranet.local:5000" ;
+            ;;
+        "dockerhub")
+           if _notexist "$DOCKER_USERNAME"; then _error "DOCKER_USERNAME EMPTY"; _func_end ; return 1 ; fi
+           __target="$DOCKER_USERNAME"
+           ;;
+        *) _error "bad target $2 (must be local/dockerhub)"; _func_end ; return 1 ;;
+    esac
+
+    if _container_list | $GREP -w "$__image" | $GREP -w "exited" > /dev/null ; then
+        _warning "Can't start, container exist, but was exited, removing first"
+        docker container rm "$__image" > /dev/null
+        docker run --rm -it --name "$__image" --hostname "$__hostname" -e PGID="$__pgid" -e PUID="$__puid" "$__target"/"$__image":"$3" /bin/bash
+    else
+        if _container_list | $GREP -w "$__image" | $GREP -w "running" > /dev/null ; then
+            _warning "Can't shell, container exist, and is running, doing nothing, you may want to rshell"
+        else
+            docker run --rm -it --name "$__image" --hostname "$__hostname" -e PGID="$__pgid" -e PUID="$__puid" "$__target"/"$__image":"$3" /bin/bash
+        fi
+    fi
+
+    _func_end
 }
 
 #
-# usage: _make_rshell --docker_file file ($1)
+# usage: _container_rshell --docker_file file ($1)
 #
-_make_rshell () {
-    _make_action "rshell" "$1"
-}
+_container_rshell () {
+    _func_start
 
-#
-# usage: _make_shell --docker_file file ($1)
-#
-_make_shell () {
-    _make_action "shell" "$1"
+    if _notexist "$1"; then _error "DOCKER_FILE EMPTY"; _func_end ; return 1 ; fi
+    if _filenotexist "$1"; then _error "DOCKER_FILE:$1 does not exist"; _func_end ; return 1 ; fi
+
+    _debug "DOCKER_FILE:$1"
+
+    local __image
+
+    __image=$(echo "$1" | cut -d. -f1 | cut -d/ -f2)
+
+    _debug "IMAGE:$__image"
+
+    if _container_list | $GREP -w "$__image" | $GREP -w "exited" > /dev/null ; then
+        _warning "Can't rshell, container exist, but is exited, doing nothing"
+    else
+        if _container_list | $GREP -w "$__image" | $GREP -w "running" > /dev/null ; then
+            docker exec -u root -it "$__image" /bin/bash
+        else
+            _warning "Can't rshell, container doesn't exist, doing nothing"
+        fi
+    fi
+
+    _func_end
 }
 
 #
@@ -562,11 +642,11 @@ _process_lib_docker () {
             system_reclaim )	                  _system_reclaim                                                                               ; return $? ;;
             get_image_version)	                  _get_image_version                     "$__docker_file" "$__target" "$__distrib"              ; return $? ;;
             build)	                          _build                                 "$__docker_file" "$__target" "$__distrib" "$__force"   ; return $? ;;
+            container_start)	                  _container_start                       "$__docker_file" "$__target" "$__distrib"              ; return $? ;;
+            container_stop)	                  _container_stop                        "$__docker_file"                                       ; return $? ;;
+            container_rshell)	                  _container_rshell                      "$__docker_file"                                       ; return $? ;;
+            container_shell)	                  _container_shell                       "$__docker_file" "$__target" "$__distrib"              ; return $? ;;
             build_all)	                          _build_all                             "$__target" "$__force"                                 ; return $? ;;
-            make_shell)	                          _make_shell                            "$__docker_file"                                       ; return $? ;;
-            make_rshell)                          _make_rshell                           "$__docker_file"                                       ; return $? ;;
-            make_start)	                          _make_start                            "$__docker_file"                                       ; return $? ;;
-            make_stop)	                          _make_stop                             "$__docker_file"                                       ; return $? ;;
             -- ) shift ;;
             *) if [ "a$1" != "a" ]; then return 1 ;  else break; fi ;;
         esac
