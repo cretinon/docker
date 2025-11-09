@@ -17,11 +17,14 @@ _install_docker () {
     _warning "in your /etc/apt-cacher-ng/acng.conf then /etc/init.d/apt-cacher-ng restart"
     _warning ""
 
-    if ! _func_exist "_playbook_localhost_docker" ; then _error "lib_ansible not installed" ; _func_end ; return 1 ; fi
+    local __return
+
+    if ! _func_exist "_playbook_localhost_docker" ; then _error "lib_ansible not installed" ; _func_end "1" ; return 1 ; fi
 
     _playbook_localhost_docker
+    __return=$?
 
-    _func_end
+    _func_end "$__return" ; return "$__return"
 }
 
 ####################################################################################################
@@ -33,17 +36,20 @@ _install_docker () {
 _volume_create () {
     _func_start
 
-    if _notexist "$1"; then _error "volume_name empty"; _func_end ; return 1 ; fi
+    if _notexist "$1"; then _error "volume_name empty"; _func_end "1" ; return 1 ; fi
 
     _debug "volume_name:$1"
 
+    local __return
+
     if docker volume ls | $GREP "$1" > /dev/null; then
-        _warning "volume already exist" ; _func_end ; return 1
+        _warning "volume already exist" ; _func_end "1" ; return 1
     else
         docker volume create "$1"
+        __return=$?
     fi
 
-    _func_end
+    _func_end "$__return" ; return "$__return"
 }
 
 #
@@ -52,9 +58,12 @@ _volume_create () {
 _volume_list () {
     _func_start
 
-    docker volume ls | awk '{print $2}' | $GREP -vw "VOLUME"
+    local __return
 
-    _func_end
+    docker volume ls | awk '{print $2}' | $GREP -vw "VOLUME"
+    __return=$?
+
+    _func_end "$__return" ; return "$__return"
 }
 
 #
@@ -63,17 +72,20 @@ _volume_list () {
 _volume_remove () {
     _func_start
 
-    if _notexist "$1"; then _error "volume_name empty"; _func_end ; return 1 ; fi
+    if _notexist "$1"; then _error "volume_name empty"; _func_end "1" ; return 1 ; fi
 
     _debug "volume_name:$1"
 
+    local __return
+
     if docker volume ls | $GREP "$1" > /dev/null; then
         docker volume remove "$1"
+        __return=$?
     else
-        _warning "volume doesnt exist" ; _func_end ; return 1
+        _warning "volume doesnt exist" ; _func_end "1" ; return 1
     fi
 
-    _func_end
+    _func_end "$__return" ; return "$__return"
 }
 
 #
@@ -82,23 +94,26 @@ _volume_remove () {
 _network_create () {
     _func_start
 
-    if _notexist "$1"; then _error "network_name EMPTY"; _func_end ; return 1 ; fi
-    if _notexist "$2"; then _error "driver EMPTY (must be in:bridge, overlay, host, null)"; _func_end ; return 1 ; fi
-    if _notexist "$3"; then _error "subnet EMPTY"; _func_end ; return 1 ; fi
-    if _notexist "$4"; then _error "gateway EMPTY"; _func_end ; return 1 ; fi
+    if _notexist "$1"; then _error "network_name EMPTY"; _func_end "1" ; return 1 ; fi
+    if _notexist "$2"; then _error "driver EMPTY (must be in:bridge, overlay, host, null)"; _func_end "1" ; return 1 ; fi
+    if _notexist "$3"; then _error "subnet EMPTY"; _func_end "1" ; return 1 ; fi
+    if _notexist "$4"; then _error "gateway EMPTY"; _func_end "1" ; return 1 ; fi
 
     _debug "network_name:$1"
     _debug "driver:$2"
     _debug "subnet:$3"
     _debug "gateway:$4"
 
+    local __return
+
     if _network_list | $GREP -w "$1" > /dev/null; then
-        _warning "network already exist" ; _func_end ; return 1
+        _warning "network already exist" ; _func_end "1" ; return 1
     else
         docker network create -d "$2" --subnet="$3" --gateway="$4" "$1"
+        __return=$?
     fi
 
-    _func_end
+    _func_end "$__return" ; return "$__return"
 }
 
 #
@@ -107,9 +122,12 @@ _network_create () {
 _network_list () {
     _func_start
 
-    docker network list | awk '{print $2}' | $GREP -vw ID
+    local __return
 
-    _func_end
+    docker network list | awk '{print $2}' | $GREP -vw ID
+    __return=$?
+
+    _func_end "$__return" ; return "$__return"
 }
 
 #
@@ -118,17 +136,20 @@ _network_list () {
 _network_remove () {
     _func_start
 
-    if _notexist "$1"; then _error "network_name EMPTY";_func_end ; return 1 ; fi
+    if _notexist "$1"; then _error "network_name EMPTY";_func_end "1" ; return 1 ; fi
 
     _debug "network_name:$1"
 
+    local __return
+
     if docker network list | $GREP -w "$1" > /dev/null; then
         docker network remove "$1"
+        __return=$?
     else
-        _warning "network alreadydoesnt exist" ; _func_end ; return 1
+        _warning "network alreadydoesnt exist" ; _func_end "1" ; return 1
     fi
 
-    _func_end
+    _func_end "$__return" ; return "$__return"
 }
 
 #
@@ -137,9 +158,12 @@ _network_remove () {
 _system_df () {
     _func_start
 
-    docker system df
+    local __return
 
-    _func_end
+    docker system df
+    __return=$?
+
+    _func_end "$__return" ; return "$__return"
 }
 
 #
@@ -153,8 +177,7 @@ _system_reclaim () {
     docker system prune -a -f
     __return=$?
 
-    _func_end
-    return $__return
+    _func_end "$__return" ; return "$__return"
 }
 
 #
@@ -163,9 +186,11 @@ _system_reclaim () {
 _compose_file_from_running_container () {
     _func_start
 
-    if _notexist "$1"; then _error "container_name EMPTY"; _func_end ; return 1 ; fi
+    if _notexist "$1"; then _error "container_name EMPTY"; _func_end "1" ; return 1 ; fi
 
     _debug "container_name:$1"
+
+    local __return
 
     echo ""
     echo "####"
@@ -174,8 +199,9 @@ _compose_file_from_running_container () {
     echo ""
 
     docker run --rm -ti -v /var/run/docker.sock:/var/run/docker.sock bcicen/docker-replay -p "$1"
+    __return=$?
 
-    _func_end
+    _func_end "$__return" ; return "$__return"
 }
 
 ####################################################################################################
@@ -187,9 +213,12 @@ _compose_file_from_running_container () {
 _container_list () {
     _func_start
 
-    docker ps -a --format json | jq -M -r '.Names + " " + .State'
+    local __return
 
-    _func_end
+    docker ps -a --format json | jq -M -r '.Names + " " + .State'
+    __return=$?
+
+    _func_end "$__return" ; return "$__return"
 }
 
 #
@@ -198,13 +227,16 @@ _container_list () {
 _container_log_show () {
     _func_start
 
-    if _notexist "$1"; then _error "container_name EMPTY ('main --docker container_list' to list active containers)"; _func_end ; return 1 ; fi
+    if _notexist "$1"; then _error "container_name EMPTY ('main --docker container_list' to list active containers)"; _func_end "1" ; return 1 ; fi
 
     _debug "container_name:$1"
 
-    docker logs -f "$1"
+    local __return
 
-    _func_end
+    docker logs -f "$1"
+    __return=$?
+
+    _func_end "$__return" ; return "$__return"
 }
 
 #
@@ -228,10 +260,10 @@ _container_filelog_truncate () {
 _container_start () {
     _func_start
 
-    if _notexist "$1"; then _error "DOCKER_FILE EMPTY"; _func_end ; return 1 ; fi
-    if _filenotexist "$1"; then _error "DOCKER_FILE:$1 does not exist"; _func_end ; return 1 ; fi
-    if _notexist "$2"; then _error "TARGET EMPTY"; _func_end ; return 1 ; fi
-    if _notexist "$3"; then _error "DISTRIB EMPTY"; _func_end ; return 1 ; fi
+    if _notexist "$1"; then _error "DOCKER_FILE EMPTY"; _func_end "1" ; return 1 ; fi
+    if _filenotexist "$1"; then _error "DOCKER_FILE:$1 does not exist"; _func_end "1" ; return 1 ; fi
+    if _notexist "$2"; then _error "TARGET EMPTY"; _func_end "1" ; return 1 ; fi
+    if _notexist "$3"; then _error "DISTRIB EMPTY"; _func_end "1" ; return 1 ; fi
 
     _debug "DOCKER_FILE:$1"
     _debug "TARGET:$2"
@@ -242,6 +274,7 @@ _container_start () {
     local __hostname
     local __pgid
     local __puid
+    local __return
 
     __image=$(echo "$1" | cut -d. -f1 | cut -d/ -f2)
     __hostname=$(echo "$__image" | cut -d_ -f2)
@@ -256,25 +289,28 @@ _container_start () {
             __target="docker.intranet.local:5000" ;
             ;;
         "dockerhub")
-           if _notexist "$DOCKER_USERNAME"; then _error "DOCKER_USERNAME EMPTY"; _func_end ; return 1 ; fi
+           if _notexist "$DOCKER_USERNAME"; then _error "DOCKER_USERNAME EMPTY"; _func_end "1" ; return 1 ; fi
            __target="$DOCKER_USERNAME"
            ;;
-        *) _error "bad target $2 (must be local/dockerhub)"; _func_end ; return 1 ;;
+        *) _error "bad target $2 (must be local/dockerhub)"; _func_end "1" ; return 1 ;;
     esac
 
     if _container_list | $GREP -w "$__image" | $GREP -w "exited" > /dev/null ; then
         _warning "Can't start, container exist, but was exited, restarting"
         docker restart "$__image" > /dev/null
+        __return=$?
     else
         if _container_list | $GREP -w "$__image" | $GREP -w "running" > /dev/null ; then
             _warning "Can't start, container exist, and was exited, restarting"
             docker restart "$__image" > /dev/null
+            __return=$?
         else
             docker run -d --name "$__image" --hostname "$__hostname" -e PGID="$__pgid" -e PUID="$__puid" "$__target"/"$__image":"$3" > /dev/null
+            __return=$?
         fi
     fi
 
-    _func_end
+    _func_end "$__return" ; return "$__return"
 }
 
 #
@@ -283,12 +319,13 @@ _container_start () {
 _container_stop () {
     _func_start
 
-    if _notexist "$1"; then _error "DOCKER_FILE EMPTY"; _func_end ; return 1 ; fi
-    if _filenotexist "$1"; then _error "DOCKER_FILE:$1 does not exist"; _func_end ; return 1 ; fi
+    if _notexist "$1"; then _error "DOCKER_FILE EMPTY"; _func_end "1" ; return 1 ; fi
+    if _filenotexist "$1"; then _error "DOCKER_FILE:$1 does not exist"; _func_end "1" ; return 1 ; fi
 
     _debug "DOCKER_FILE:$1"
 
     local __image
+    local __return
 
     __image=$(echo "$1" | cut -d. -f1 | cut -d/ -f2)
 
@@ -299,12 +336,13 @@ _container_stop () {
     else
         if _container_list | $GREP -w "$__image" | $GREP -w "running" > /dev/null ; then
             docker container stop "$__image" > /dev/null
+            __return=$?
         else
             _warning "Can't stop, container doesn't exist, doing nothing"
         fi
     fi
 
-    _func_end
+    _func_end "$__return" ; return "$__return"
 }
 
 #
@@ -313,10 +351,10 @@ _container_stop () {
 _container_shell () {
     _func_start
 
-    if _notexist "$1"; then _error "DOCKER_FILE EMPTY"; _func_end ; return 1 ; fi
-    if _filenotexist "$1"; then _error "DOCKER_FILE:$1 does not exist"; _func_end ; return 1 ; fi
-    if _notexist "$2"; then _error "TARGET EMPTY"; _func_end ; return 1 ; fi
-    if _notexist "$3"; then _error "DISTRIB EMPTY"; _func_end ; return 1 ; fi
+    if _notexist "$1"; then _error "DOCKER_FILE EMPTY"; _func_end "1" ; return 1 ; fi
+    if _filenotexist "$1"; then _error "DOCKER_FILE:$1 does not exist"; _func_end "1" ; return 1 ; fi
+    if _notexist "$2"; then _error "TARGET EMPTY"; _func_end "1" ; return 1 ; fi
+    if _notexist "$3"; then _error "DISTRIB EMPTY"; _func_end "1" ; return 1 ; fi
 
     _debug "DOCKER_FILE:$1"
     _debug "TARGET:$2"
@@ -328,6 +366,7 @@ _container_shell () {
     local __pgid
     local __puid
     local __cmd
+    local __return
 
     __image=$(echo "$1" | cut -d. -f1 | cut -d/ -f2)
     __hostname=$(echo "$__image" | cut -d_ -f2)
@@ -348,25 +387,27 @@ _container_shell () {
             __target="docker.intranet.local:5000" ;
             ;;
         "dockerhub")
-           if _notexist "$DOCKER_USERNAME"; then _error "DOCKER_USERNAME EMPTY"; _func_end ; return 1 ; fi
+           if _notexist "$DOCKER_USERNAME"; then _error "DOCKER_USERNAME EMPTY"; _func_end "1" ; return 1 ; fi
            __target="$DOCKER_USERNAME"
            ;;
-        *) _error "bad target $2 (must be local/dockerhub)"; _func_end ; return 1 ;;
+        *) _error "bad target $2 (must be local/dockerhub)"; _func_end "1" ; return 1 ;;
     esac
 
     if _container_list | $GREP -w "$__image" | $GREP -w "exited" > /dev/null ; then
         _warning "Can't start, container exist, but was exited, removing first"
         docker container rm "$__image" > /dev/null
         docker run --rm -it --name "$__image" --hostname "$__hostname" -e PGID="$__pgid" -e PUID="$__puid" "$__target"/"$__image":"$3" "$__cmd"
+        __return=$?
     else
         if _container_list | $GREP -w "$__image" | $GREP -w "running" > /dev/null ; then
-            _warning "Can't shell, container exist, and is running, doing nothing, you may want to rshell"
+            _error "Can't shell, container exist, and is running, doing nothing, you may want to rshell" ; _func_end "1" ; return 1
         else
             docker run --rm -it --name "$__image" --hostname "$__hostname" -e PGID="$__pgid" -e PUID="$__puid" "$__target"/"$__image":"$3" "$__cmd"
+            __return=$?
         fi
     fi
 
-    _func_end
+    _func_end "$__return" ; return "$__return"
 }
 
 #
@@ -375,13 +416,14 @@ _container_shell () {
 _container_rshell () {
     _func_start
 
-    if _notexist "$1"; then _error "DOCKER_FILE EMPTY"; _func_end ; return 1 ; fi
-    if _filenotexist "$1"; then _error "DOCKER_FILE:$1 does not exist"; _func_end ; return 1 ; fi
+    if _notexist "$1"; then _error "DOCKER_FILE EMPTY"; _func_end "1" ; return 1 ; fi
+    if _filenotexist "$1"; then _error "DOCKER_FILE:$1 does not exist"; _func_end "1" ; return 1 ; fi
 
     _debug "DOCKER_FILE:$1"
 
     local __image
     local __cmd
+    local __return
 
     __image=$(echo "$1" | cut -d. -f1 | cut -d/ -f2)
     if _notexist "$2"; then
@@ -393,16 +435,17 @@ _container_rshell () {
     _debug "IMAGE:$__image"
 
     if _container_list | $GREP -w "$__image" | $GREP -w "exited" > /dev/null ; then
-        _warning "Can't rshell, container exist, but is exited, doing nothing"
+        _error "Can't rshell, container exist, but is exited, you need to restart first" ; _func_end "1" ; return 1
     else
         if _container_list | $GREP -w "$__image" | $GREP -w "running" > /dev/null ; then
             docker exec -u root -it "$__image" "$__cmd"
+            __return=$?
         else
-            _warning "Can't rshell, container doesn't exist, doing nothing"
+            _error "Can't rshell, container doesn't exist, doing nothing" ; _func_end "1" ; return 1
         fi
     fi
 
-    _func_end
+    _func_end "$__return" ; return "$__return"
 }
 
 #
@@ -411,10 +454,10 @@ _container_rshell () {
 _build () {
     _func_start
 
-    if _notexist "$1"; then _error "DOCKER_FILE EMPTY"; _func_end ; return 1 ; fi
-    if _filenotexist "$1"; then _error "DOCKER_FILE:$1 does not exist"; _func_end ; return 1 ; fi
-    if _notexist "$2"; then _error "TARGET EMPTY"; _func_end ; return 1 ; fi
-    if _notexist "$3"; then _error "DISTRIB EMPTY"; _func_end ; return 1 ; fi
+    if _notexist "$1"; then _error "DOCKER_FILE EMPTY"; _func_end "1" ; return 1 ; fi
+    if _filenotexist "$1"; then _error "DOCKER_FILE:$1 does not exist"; _func_end "1" ; return 1 ; fi
+    if _notexist "$2"; then _error "TARGET EMPTY"; _func_end "1" ; return 1 ; fi
+    if _notexist "$3"; then _error "DISTRIB EMPTY"; _func_end "1" ; return 1 ; fi
 
     _debug "DOCKER_FILE:$1"
     _debug "TARGET:$2"
@@ -430,21 +473,21 @@ _build () {
     local __dockerfile_version
     local __image_version
     local __force
+    local __return
 
     __image=$(echo "$1" | cut -d. -f1 | cut -d/ -f2)
     __opsys=$(echo "$__image" | cut -d_ -f1 | cut -d/ -f2)
     __dockerfile_version=$($GREP "ARG VERSION=" "$1" | cut -d\" -f2)
-    if ! __image_version=$(_get_image_version "$1" "$2" "$3") ; then _error "something went wrong with get_image_version" ; _func_end ; return 1  ; fi
+    if ! __image_version=$(_get_image_version "$1" "$2" "$3") ; then _error "something went wrong with get_image_version" ; _func_end "1" ; return 1  ; fi
 
-    if _notexist "$__dockerfile_version"; then _error "No version in $1"; _func_end ; return 1 ; fi
+    if _notexist "$__dockerfile_version"; then _error "No version in $1"; _func_end "1" ; return 1 ; fi
 
     if _notexist "$4"; then __force=false ; else __force="$4" ; fi
 
     if [ "a$__image_version" = "a$__dockerfile_version" ]; then
         if [ "a$__force" != "atrue" ]; then
             _warning "trying to build same version as existing in $2 repository. Skipping."
-            _func_end
-            return 0
+            _func_end "0" ; return 0
         else
             _verbose "trying to build same version as existing in $2 repository. But FORCE."
         fi
@@ -461,14 +504,14 @@ _build () {
             __output_build="type=registry"",registry.insecure=true"
             ;;
        "dockerhub")
-           if _notexist "$DOCKER_USERNAME"; then _error "DOCKER_USERNAME EMPTY"; _func_end ; return 1 ; fi
+           if _notexist "$DOCKER_USERNAME"; then _error "DOCKER_USERNAME EMPTY"; _func_end "1" ; return 1 ; fi
            docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
            __target="$DOCKER_USERNAME"
            __http_proxy=""
            __https_proxy=""
            __output_build="type=registry,registry.insecure=false"
            ;;
-        *) _error "bad target $2 (must be local/dockerhub)"; _func_end ; return 1 ;;
+        *) _error "bad target $2 (must be local/dockerhub)"; _func_end "1" ; return 1 ;;
     esac
 
     case "$3" in
@@ -478,7 +521,7 @@ _build () {
         "alpine")
             __base_tag="3.22"
             ;;
-        *)_error "bad distrib $3 (must be debian/alpine)"; _func_end ; return 1 ;;
+        *)_error "bad distrib $3 (must be debian/alpine)"; _func_end "1" ; return 1 ;;
     esac
 
     _debug "Going to build=>""$__target"/"$__image":"$3"
@@ -520,8 +563,9 @@ EOF
           --label org.label-schema.schema-version="$__dockerfile_version" \
           --no-cache \
           --platform linux/arm/v7,linux/arm64/v8,linux/amd64  .
+   __return=$?
 
-    _func_end
+   _func_end "$__return" ; return "$__return"
 }
 
 #
@@ -530,10 +574,10 @@ EOF
 _get_image_version () {
     _func_start
 
-    if _notexist "$1"; then _error "DOCKER_FILE EMPTY"; _func_end ; return 1 ; fi
-    if _filenotexist "$1"; then _error "DOCKER_FILE does not exist"; _func_end ; return 1 ; fi
-    if _notexist "$2"; then _error "TARGET EMPTY"; _func_end ; return 1 ; fi
-    if _notexist "$3"; then _error "DISTRIB EMPTY"; _func_end ; return 1 ; fi
+    if _notexist "$1"; then _error "DOCKER_FILE EMPTY"; _func_end "1" ; return 1 ; fi
+    if _filenotexist "$1"; then _error "DOCKER_FILE does not exist"; _func_end "1" ; return 1 ; fi
+    if _notexist "$2"; then _error "TARGET EMPTY"; _func_end "1" ; return 1 ; fi
+    if _notexist "$3"; then _error "DISTRIB EMPTY"; _func_end "1" ; return 1 ; fi
 
     _debug "DOCKER_FILE:$1"
     _debug "TARGET:$2"
@@ -548,7 +592,7 @@ _get_image_version () {
 
     case "$3" in
         debian|alpine) true;;
-        *) _error "distrib must be debian or alpine"; _func_end ; return 1 ;;
+        *) _error "distrib must be debian or alpine"; _func_end "1" ; return 1 ;;
     esac
 
     case "$2" in
@@ -558,13 +602,13 @@ _get_image_version () {
             __header="Accept: application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json, application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.docker.distribution.manifest.v2+json"
             ;;
         "dockerhub")
-            if _notexist "$DOCKER_USERNAME"; then _error "DOCKER_USERNAME EMPTY"; _func_end ; return 1 ; fi
+            if _notexist "$DOCKER_USERNAME"; then _error "DOCKER_USERNAME EMPTY"; _func_end "1" ; return 1 ; fi
             __url="https://registry-1.docker.io"
             __image="$DOCKER_USERNAME/$__image"
             __token=$(curl -s "https://auth.docker.io/token?service=registry.docker.io&scope=repository:$__image:pull" | jq -r '.token')
             __header="Accept: application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json, application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.docker.distribution.manifest.v2+json"
             ;;
-        *) _error "target must be local or dockerhub"; _func_end ; return 1 ;;
+        *) _error "target must be local or dockerhub"; _func_end "1" ; return 1 ;;
     esac
 
     _debug "url:$__url"
@@ -577,6 +621,8 @@ _get_image_version () {
             echo "$__resp" | jq -r .config.Labels | $GREP "version"
         done
     done | sort -u | cut -d: -f2 | cut -d\" -f2
+
+    _fund_end
 }
 
 #
@@ -585,22 +631,23 @@ _get_image_version () {
 _build_all () {
     _func_start
 
-    if _workingdir_isnot "$MY_GIT_DIR/docker" ; then _error "running _build_all outside of $MY_GIT_DIR/docker is not supported"; _func_end; return 1 ; fi
+    if _workingdir_isnot "$MY_GIT_DIR/docker" ; then _error "running _build_all outside of $MY_GIT_DIR/docker is not supported"; _func_end "1" ; return 1 ; fi
 
-    if _notexist "$1"; then _error "TARGET EMPTY"; _func_end ; return 1 ; fi
+    if _notexist "$1"; then _error "TARGET EMPTY"; _func_end "1" ; return 1 ; fi
 
     case "$1" in
         "local") true ;;
         "dockerhub")
-            if _notexist "$DOCKER_USERNAME"; then _error "DOCKER_USERNAME EMPTY"; _func_end ; return 1 ; fi
-            if _notexist "$DOCKER_PASSWORD"; then _error "DOCKER_PASSWORD EMPTY"; _func_end ; return 1 ; fi
+            if _notexist "$DOCKER_USERNAME"; then _error "DOCKER_USERNAME EMPTY"; _func_end "1" ; return 1 ; fi
+            if _notexist "$DOCKER_PASSWORD"; then _error "DOCKER_PASSWORD EMPTY"; _func_end "1" ; return 1 ; fi
             ;;
-        *) _error "target must be local or dockerhub"; _func_end ; return 1 ;;
+        *) _error "target must be local or dockerhub"; _func_end "1" ; return 1 ;;
     esac
 
     local __file
     local __distrib
     local __force
+    local __return
 
     if _notexist "$2"; then __force=false ; else __force="$2" ; fi
 
@@ -609,13 +656,13 @@ _build_all () {
             case $__file in
                 *debug*) true;;
                 *) _verbose "Building file:$__file"
-                   _build "$__file" "$1" "$__distrib" "$__force"
+                   if ! _build "$__file" "$1" "$__distrib" "$__force" ; then _error "something went wrong with build, exiting" ; _func_end "1" ; return ; fi
                    ;;
             esac
         done
     done
 
-    _func_end
+    _func_end "0" ; return 0
 }
 
 ####################################################################################################
