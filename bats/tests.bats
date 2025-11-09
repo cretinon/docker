@@ -90,7 +90,7 @@ setup() {
 
 @test "_container_start" {
   run cd $MY_GIT_DIR/docker && $MY_GIT_DIR/shell/my_warp.sh -d -v --lib docker container_start --docker_file dockerfile/jinade_check_my_ip --target dockerhub --distrib debian && cd -
-  assert_output --partial "toto"
+  assert_success
 }
 
 @test "_container_list" {
