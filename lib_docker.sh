@@ -308,7 +308,7 @@ _container_stop () {
 }
 
 #
-# usage: _container_shell --docker_file file ($1) --target local/dockerhub ($2) --distrib debian/alpine ($3)
+# usage: _container_shell --docker_file file ($1) --target local/dockerhub ($2) --distrib debian/alpine ($3) --cmd optional ($4)
 #
 _container_shell () {
     _func_start
@@ -327,11 +327,18 @@ _container_shell () {
     local __hostname
     local __pgid
     local __puid
+    local __cmd
 
     __image=$(echo "$1" | cut -d. -f1 | cut -d/ -f2)
     __hostname=$(echo "$__image" | cut -d_ -f2)
     __pgid=$(id -g)
     __puid=$(id -u)
+    __image=$(echo "$1" | cut -d. -f1 | cut -d/ -f2)
+    if _notexist "$4"; then
+        __cmd="/bin/bash"
+    else
+        __cmd="$4"
+    fi
 
     _debug "IMAGE:$__image"
     _debug "HOSTNAME:$__hostname"
@@ -350,12 +357,12 @@ _container_shell () {
     if _container_list | $GREP -w "$__image" | $GREP -w "exited" > /dev/null ; then
         _warning "Can't start, container exist, but was exited, removing first"
         docker container rm "$__image" > /dev/null
-        docker run --rm -it --name "$__image" --hostname "$__hostname" -e PGID="$__pgid" -e PUID="$__puid" "$__target"/"$__image":"$3" /bin/bash
+        docker run --rm -it --name "$__image" --hostname "$__hostname" -e PGID="$__pgid" -e PUID="$__puid" "$__target"/"$__image":"$3" "$__cmd"
     else
         if _container_list | $GREP -w "$__image" | $GREP -w "running" > /dev/null ; then
             _warning "Can't shell, container exist, and is running, doing nothing, you may want to rshell"
         else
-            docker run --rm -it --name "$__image" --hostname "$__hostname" -e PGID="$__pgid" -e PUID="$__puid" "$__target"/"$__image":"$3" /bin/bash
+            docker run --rm -it --name "$__image" --hostname "$__hostname" -e PGID="$__pgid" -e PUID="$__puid" "$__target"/"$__image":"$3" "$__cmd"
         fi
     fi
 
@@ -363,7 +370,7 @@ _container_shell () {
 }
 
 #
-# usage: _container_rshell --docker_file file ($1)
+# usage: _container_rshell --docker_file file ($1) --cmd optional ($2)
 #
 _container_rshell () {
     _func_start
@@ -374,8 +381,14 @@ _container_rshell () {
     _debug "DOCKER_FILE:$1"
 
     local __image
+    local __cmd
 
     __image=$(echo "$1" | cut -d. -f1 | cut -d/ -f2)
+    if _notexist "$2"; then
+        __cmd="/bin/bash"
+    else
+        __cmd="$2"
+    fi
 
     _debug "IMAGE:$__image"
 
@@ -383,7 +396,7 @@ _container_rshell () {
         _warning "Can't rshell, container exist, but is exited, doing nothing"
     else
         if _container_list | $GREP -w "$__image" | $GREP -w "running" > /dev/null ; then
-            docker exec -u root -it "$__image" /bin/bash
+            docker exec -u root -it "$__image" "$__cmd"
         else
             _warning "Can't rshell, container doesn't exist, doing nothing"
         fi
@@ -621,6 +634,7 @@ _process_lib_docker () {
     local __target
     local __distrib
     local __force
+    local __cmd
 
     while true ; do
         case "$1" in
@@ -634,6 +648,7 @@ _process_lib_docker () {
             --target )         __target=$2            ; shift ; shift         ;;
             --distrib )        __distrib=$2           ; shift ; shift         ;;
             --force )          __force=$2             ; shift ; shift         ;;
+            --cmd )            __cmd=$2               ; shift ; shift         ;;
             -- )                                        shift ;         break ;;
             * )                                         shift                 ;;
         esac
@@ -659,8 +674,8 @@ _process_lib_docker () {
             build)	                          _build                                 "$__docker_file" "$__target" "$__distrib" "$__force"   ; return $? ;;
             container_start)	                  _container_start                       "$__docker_file" "$__target" "$__distrib"              ; return $? ;;
             container_stop)	                  _container_stop                        "$__docker_file"                                       ; return $? ;;
-            container_rshell)	                  _container_rshell                      "$__docker_file"                                       ; return $? ;;
-            container_shell)	                  _container_shell                       "$__docker_file" "$__target" "$__distrib"              ; return $? ;;
+            container_rshell)	                  _container_rshell                      "$__docker_file" "$__cmd"                              ; return $? ;;
+            container_shell)	                  _container_shell                       "$__docker_file" "$__target" "$__distrib" "$__cmd"     ; return $? ;;
             build_all)	                          _build_all                             "$__target" "$__force"                                 ; return $? ;;
             -- ) shift ;;
             *) if [ "a$1" != "a" ]; then return 1 ;  else break; fi ;;
