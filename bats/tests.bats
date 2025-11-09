@@ -118,7 +118,7 @@ setup() {
   assert_output --partial "bin"
 }
 
-@test "_build_base" {
-  run cd $MY_GIT_DIR/docker && $MY_GIT_DIR/shell/my_warp.sh -d -v --lib docker build --target dockerhub --distrib alpine --docker_file dockerfile/jinade_base --force true && cd -
+@test "_build_all" {
+  run $MY_GIT_DIR/shell/my_warp.sh -d -v --lib docker build_all --target dockerhub
   assert_success
 }
