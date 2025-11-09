@@ -656,7 +656,7 @@ _build_all () {
             case $__file in
                 *debug*) true;;
                 *) _verbose "Building file:$__file"
-                   if ! _build "$__file" "$1" "$__distrib" "$__force" ; then _error "something went wrong with build, exiting" ; _func_end "1" ; return ; fi
+                   if ! _build "$__file" "$1" "$__distrib" "$__force" ; then _error "something went wrong with build, exiting" ; _func_end "1" ; return 1 ; fi
                    ;;
             esac
         done
