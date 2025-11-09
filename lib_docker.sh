@@ -483,7 +483,7 @@ _build () {
 
     _debug "Going to build=>""$__target"/"$__image":"$3"
 
-    #creating buildkit conf file, even if we're in CI
+    #creating buildkit conf file, even if we re in CI
     sudo mkdir -p /etc/buildkit/
     sudo cat <<EOF | sudo tee /etc/buildkit/buildkitd.toml
 debug = true
