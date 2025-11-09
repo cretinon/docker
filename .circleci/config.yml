@@ -79,14 +79,14 @@ commands:
     steps:
       - run:
           name: Run bats
-          command: MY_GIT_DIR="${HOME}/project/git" bats --verbose-run git/docker/bats/tests.bats
+          command: cd "${HOME}/project/git/docker" && MY_GIT_DIR="${HOME}/project/git" ${HOME}/project/git/shell/my_warp.sh --lib docker -b
 
   run-kcov:
     description: 'run kcov'
     steps:
       - run:
           name: Run kcov
-          command: cd "${HOME}/project/git/docker" ; MY_GIT_DIR="${HOME}/project/git" kcov --exclude-path=.git/,README.md,/usr/,.codecov.yml --include-path="${HOME}/project/git/docker"  /tmp/dest_kcov ${HOME}/project/git/shell/my_warp.sh --lib docker -b
+          command: cd "${HOME}/project/git/docker" && MY_GIT_DIR="${HOME}/project/git" kcov --exclude-path=.git/,README.md,/usr/,.codecov.yml --include-path="${HOME}/project/git/docker"  /tmp/dest_kcov ${HOME}/project/git/shell/my_warp.sh --lib docker -b
 
   build-image-using-my_warp:
     description: 'build_all using my_warp'
