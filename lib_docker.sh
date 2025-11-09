@@ -622,7 +622,7 @@ _get_image_version () {
         done
     done | sort -u | cut -d: -f2 | cut -d\" -f2
 
-    _fund_end
+    _func_end
 }
 
 #
