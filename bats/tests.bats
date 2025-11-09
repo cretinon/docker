@@ -99,7 +99,7 @@ setup() {
 }
 
 @test "_container_rshell" {
-  run cd $MY_GIT_DIR/docker && $MY_GIT_DIR/shell/my_warp.sh -d -v --lib docker container_rshell --docker_file dockerfile/jinade_check_my_ip --cmd ls && cd -
+  run $MY_GIT_DIR/shell/my_warp.sh -d -v --lib docker container_rshell --docker_file dockerfile/jinade_check_my_ip --cmd ls
   assert_output --partial "bin"
 }
 
@@ -114,7 +114,7 @@ setup() {
 }
 
 @test "_container_shell" {
-  run cd $MY_GIT_DIR/docker && $MY_GIT_DIR/shell/my_warp.sh -d -v --lib docker container_shell --docker_file dockerfile/jinade_base --target dockerhub --distrib debian --cmd ls && cd -
+  run $MY_GIT_DIR/shell/my_warp.sh -d -v --lib docker container_shell --docker_file dockerfile/jinade_base --target dockerhub --distrib debian --cmd ls
   assert_output --partial "bin"
 }
 
