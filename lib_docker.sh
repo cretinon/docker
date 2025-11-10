@@ -669,6 +669,8 @@ _build_all () {
 ############################################# PROCESS ##############################################
 ####################################################################################################
 _process_lib_docker () {
+    _func_start
+
     eval set -- "$@"
 
     local __container_name
@@ -682,6 +684,7 @@ _process_lib_docker () {
     local __distrib
     local __force
     local __cmd
+    local __return
 
     while true ; do
         case "$1" in
@@ -703,29 +706,31 @@ _process_lib_docker () {
 
     while true ; do
         case "$1" in
-            install )                             _install_docker                                                                               ; return $? ;;
-            compose_file_from_running_container ) _compose_file_from_running_container   "$__container_name"                                    ; return $? ;;
-            network_list )                        _network_list                                                                                 ; return $? ;;
-            network_create )	                  _network_create                        "$__network_name" "$__driver" "$__subnet" "$__gateway" ; return $? ;;
-            volume_list )	                  _volume_list                                                                                  ; return $? ;;
-            volume_create )	                  _volume_create                         "$__volume_name"                                       ; return $? ;;
-            volume_remove )	                  _volume_remove                         "$__volume_name"                                       ; return $? ;;
-            network_remove )	                  _network_remove                        "$__network_name"                                      ; return $? ;;
-            container_filelog_show )              _container_filelog_show                                                                       ; return $? ;;
-            container_filelog_truncate )          _container_filelog_truncate                                                                   ; return $? ;;
-            container_log_show )                  _container_log_show                    "$__container_name"                                    ; return $? ;;
-            container_list )	                  _container_list                                                                               ; return $? ;;
-            system_df )	                          _system_df                                                                                    ; return $? ;;
-            system_reclaim )	                  _system_reclaim                                                                               ; return $? ;;
-            get_image_version)	                  _get_image_version                     "$__docker_file" "$__target" "$__distrib"              ; return $? ;;
-            build)	                          _build                                 "$__docker_file" "$__target" "$__distrib" "$__force"   ; return $? ;;
-            container_start)	                  _container_start                       "$__docker_file" "$__target" "$__distrib"              ; return $? ;;
-            container_stop)	                  _container_stop                        "$__docker_file"                                       ; return $? ;;
-            container_rshell)	                  _container_rshell                      "$__docker_file" "$__cmd"                              ; return $? ;;
-            container_shell)	                  _container_shell                       "$__docker_file" "$__target" "$__distrib" "$__cmd"     ; return $? ;;
-            build_all)	                          _build_all                             "$__target" "$__force"                                 ; return $? ;;
+            install )                             _install_docker                                                                               ; __return=$? ; break ;;
+            compose_file_from_running_container ) _compose_file_from_running_container   "$__container_name"                                    ; __return=$? ; break ;;
+            network_list )                        _network_list                                                                                 ; __return=$? ; break ;;
+            network_create )	                  _network_create                        "$__network_name" "$__driver" "$__subnet" "$__gateway" ; __return=$? ; break ;;
+            volume_list )	                  _volume_list                                                                                  ; __return=$? ; break ;;
+            volume_create )	                  _volume_create                         "$__volume_name"                                       ; __return=$? ; break ;;
+            volume_remove )	                  _volume_remove                         "$__volume_name"                                       ; __return=$? ; break ;;
+            network_remove )	                  _network_remove                        "$__network_name"                                      ; __return=$? ; break ;;
+            container_filelog_show )              _container_filelog_show                                                                       ; __return=$? ; break ;;
+            container_filelog_truncate )          _container_filelog_truncate                                                                   ; __return=$? ; break ;;
+            container_log_show )                  _container_log_show                    "$__container_name"                                    ; __return=$? ; break ;;
+            container_list )	                  _container_list                                                                               ; __return=$? ; break ;;
+            system_df )	                          _system_df                                                                                    ; __return=$? ; break ;;
+            system_reclaim )	                  _system_reclaim                                                                               ; __return=$? ; break ;;
+            get_image_version)	                  _get_image_version                     "$__docker_file" "$__target" "$__distrib"              ; __return=$? ; break ;;
+            build)	                          _build                                 "$__docker_file" "$__target" "$__distrib" "$__force"   ; __return=$? ; break ;;
+            container_start)	                  _container_start                       "$__docker_file" "$__target" "$__distrib"              ; __return=$? ; break ;;
+            container_stop)	                  _container_stop                        "$__docker_file"                                       ; __return=$? ; break ;;
+            container_rshell)	                  _container_rshell                      "$__docker_file" "$__cmd"                              ; __return=$? ; break ;;
+            container_shell)	                  _container_shell                       "$__docker_file" "$__target" "$__distrib" "$__cmd"     ; __return=$? ; break ;;
+            build_all)	                          _build_all                             "$__target" "$__force"                                 ; __return=$? ; break ;;
             -- ) shift ;;
-            *) if [ "a$1" != "a" ]; then return 1 ;  else break; fi ;;
+            *) _error "command $1 not found" ; __return=1 ; break ;;
         esac
     done
+
+    _func_end "$__return" ; return "$__return"
 }
