@@ -1,0 +1,29 @@
+ARG ARCH
+ARG DISTRIB
+ARG DOCKERSRC
+ARG REGISTRY
+
+ARG HTTP_PROXY
+ARG HTTPS_PROXY
+
+FROM ${ARCH}${DOCKERSRC}:${DISTRIB}
+ENV HTTP_PROXY=$HTTP_PROXY
+ENV HTTPS_PROXY=$HTTPS_PROXY
+
+RUN apt-get update && apt-get -y -q install --no-install-recommends iproute2 netbase net-tools mono-devel wget ca-certificates && apt-get clean && rm -rf /var/cache/apt/* /var/lib/apt/lists/*
+
+# Clear proxy variables for final image
+ENV HTTP_PROXY=
+ENV HTTPS_PROXY=
+
+RUN mkdir -p /opt/Jackett
+
+COPY --chmod=755 entrypoint/jackett.sh /usr/local/bin/
+
+WORKDIR /opt/Jackett
+
+RUN wget -O- "https://github.com/Jackett/Jackett/releases/download/v0.22.1625/Jackett.Binaries.LinuxAMDx64.tar.gz" | tar xz --strip-components=1
+
+EXPOSE 9117
+
+ENTRYPOINT ["/usr/local/bin/jackett.sh"]
