@@ -2,7 +2,7 @@
 * lib_docker.sh is a collection of shell functions I use in conjunction with my "[lib_shell](https://github.com/cretinon/shell/)" supporting dockerhub/local repository
 * All dockerfiles supports multiarch (linux/arm/v7,linux/arm64/v8,linux/amd64) and multi distribution (debian/alpine)
 * Automatic build using CircleCI
-* Stacks are not clean yet... and will be done in lib_portainer.sh
+* need to find a way to add "FLAGS" in container_start and container_shell (expl vpn flags --mount source=$(OPSYS)_$(SVCNAME),target=/vpn/ --cap-add=NET_ADMIN --device /dev/net/tun... may be in labels like we've done for version)
 * ...
 
 #
