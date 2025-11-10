@@ -2,8 +2,7 @@
 * lib_docker.sh is a collection of shell functions I use in conjunction with my "[lib_shell](https://github.com/cretinon/shell/)" supporting dockerhub/local repository
 * All dockerfiles supports multiarch (linux/arm/v7,linux/arm64/v8,linux/amd64) and multi distribution (debian/alpine)
 * Automatic build using CircleCI
-* Some specific environment parameters are hardcoded :( ...
-* Stacks are not clean yet...
+* Stacks are not clean yet... and will be done in lib_portainer.sh
 * ...
 
 #

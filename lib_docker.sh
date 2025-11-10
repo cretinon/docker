@@ -27,6 +27,22 @@ _install_docker () {
     _func_end "$__return" ; return "$__return"
 }
 
+#
+# usage: _usage_docker
+#
+_usage_docker () {
+    _func_start
+
+    echo -e "\nIn order to use lib_docker.sh you first need to create $MY_GIT_DIR/docker/conf/my_docker.conf with
+ HTTP_PROXY=\"http://your.proxy.net:port\"    or    HTTP_PROXY=\"\"
+ HTTPS_PROXY=\"https://your.proxy.net:port\"  or    HTTPS_PROXY=\"\"
+ LOCAL_REGISTRY=\"your.registry.net:port\"    or    LOCAL_REGISTRY=\"\"
+
+Then call any function like : \n"
+
+    _func_end "0" ; return 0
+}
+
 ####################################################################################################
 ########################################### DOCKER ADMIN ###########################################
 ####################################################################################################
@@ -37,6 +53,7 @@ _volume_create () {
     _func_start
 
     if _notexist "$1"; then _error "volume_name empty"; _func_end "1" ; return 1 ; fi
+    if _notinstalled "docker"; then _error "docker not found"; _func_end "1" ; return 1 ; fi
 
     _debug "volume_name:$1"
 
@@ -58,6 +75,8 @@ _volume_create () {
 _volume_list () {
     _func_start
 
+    if _notinstalled "docker"; then _error "docker not found"; _func_end "1" ; return 1 ; fi
+
     local __return
 
     docker volume ls | awk '{print $2}' | $GREP -vw "VOLUME"
@@ -73,6 +92,7 @@ _volume_remove () {
     _func_start
 
     if _notexist "$1"; then _error "volume_name empty"; _func_end "1" ; return 1 ; fi
+    if _notinstalled "docker"; then _error "docker not found"; _func_end "1" ; return 1 ; fi
 
     _debug "volume_name:$1"
 
@@ -98,6 +118,7 @@ _network_create () {
     if _notexist "$2"; then _error "driver EMPTY (must be in:bridge, overlay, host, null)"; _func_end "1" ; return 1 ; fi
     if _notexist "$3"; then _error "subnet EMPTY"; _func_end "1" ; return 1 ; fi
     if _notexist "$4"; then _error "gateway EMPTY"; _func_end "1" ; return 1 ; fi
+    if _notinstalled "docker"; then _error "docker not found"; _func_end "1" ; return 1 ; fi
 
     _debug "network_name:$1"
     _debug "driver:$2"
@@ -122,6 +143,8 @@ _network_create () {
 _network_list () {
     _func_start
 
+    if _notinstalled "docker"; then _error "docker not found"; _func_end "1" ; return 1 ; fi
+
     local __return
 
     docker network list | awk '{print $2}' | $GREP -vw ID
@@ -137,6 +160,7 @@ _network_remove () {
     _func_start
 
     if _notexist "$1"; then _error "network_name EMPTY";_func_end "1" ; return 1 ; fi
+    if _notinstalled "docker"; then _error "docker not found"; _func_end "1" ; return 1 ; fi
 
     _debug "network_name:$1"
 
@@ -158,6 +182,8 @@ _network_remove () {
 _system_df () {
     _func_start
 
+    if _notinstalled "docker"; then _error "docker not found"; _func_end "1" ; return 1 ; fi
+
     local __return
 
     docker system df
@@ -171,6 +197,8 @@ _system_df () {
 #
 _system_reclaim () {
     _func_start
+
+    if _notinstalled "docker"; then _error "docker not found"; _func_end "1" ; return 1 ; fi
 
     local __return
 
@@ -187,6 +215,7 @@ _compose_file_from_running_container () {
     _func_start
 
     if _notexist "$1"; then _error "container_name EMPTY"; _func_end "1" ; return 1 ; fi
+    if _notinstalled "docker"; then _error "docker not found"; _func_end "1" ; return 1 ; fi
 
     _debug "container_name:$1"
 
@@ -213,6 +242,8 @@ _compose_file_from_running_container () {
 _container_list () {
     _func_start
 
+    if _notinstalled "docker"; then _error "docker not found"; _func_end "1" ; return 1 ; fi
+
     local __return
 
     docker ps -a --format json | jq -M -r '.Names + " " + .State'
@@ -228,6 +259,7 @@ _container_log_show () {
     _func_start
 
     if _notexist "$1"; then _error "container_name EMPTY ('main --docker container_list' to list active containers)"; _func_end "1" ; return 1 ; fi
+    if _notinstalled "docker"; then _error "docker not found"; _func_end "1" ; return 1 ; fi
 
     _debug "container_name:$1"
 
@@ -264,6 +296,7 @@ _container_start () {
     if _filenotexist "$1"; then _error "DOCKER_FILE:$1 does not exist"; _func_end "1" ; return 1 ; fi
     if _notexist "$2"; then _error "TARGET EMPTY"; _func_end "1" ; return 1 ; fi
     if _notexist "$3"; then _error "DISTRIB EMPTY"; _func_end "1" ; return 1 ; fi
+    if _notinstalled "docker"; then _error "docker not found"; _func_end "1" ; return 1 ; fi
 
     _debug "DOCKER_FILE:$1"
     _debug "TARGET:$2"
@@ -286,7 +319,7 @@ _container_start () {
 
     case "$2" in
         "local")
-            __target="docker.intranet.local:5000" ;
+            __target="$LOCAL_REGISTRY" ;
             ;;
         "dockerhub")
            if _notexist "$DOCKER_USERNAME"; then _error "DOCKER_USERNAME EMPTY"; _func_end "1" ; return 1 ; fi
@@ -321,6 +354,7 @@ _container_stop () {
 
     if _notexist "$1"; then _error "DOCKER_FILE EMPTY"; _func_end "1" ; return 1 ; fi
     if _filenotexist "$1"; then _error "DOCKER_FILE:$1 does not exist"; _func_end "1" ; return 1 ; fi
+    if _notinstalled "docker"; then _error "docker not found"; _func_end "1" ; return 1 ; fi
 
     _debug "DOCKER_FILE:$1"
 
@@ -355,6 +389,7 @@ _container_shell () {
     if _filenotexist "$1"; then _error "DOCKER_FILE:$1 does not exist"; _func_end "1" ; return 1 ; fi
     if _notexist "$2"; then _error "TARGET EMPTY"; _func_end "1" ; return 1 ; fi
     if _notexist "$3"; then _error "DISTRIB EMPTY"; _func_end "1" ; return 1 ; fi
+    if _notinstalled "docker"; then _error "docker not found"; _func_end "1" ; return 1 ; fi
 
     _debug "DOCKER_FILE:$1"
     _debug "TARGET:$2"
@@ -384,7 +419,7 @@ _container_shell () {
 
     case "$2" in
         "local")
-            __target="docker.intranet.local:5000" ;
+            __target="$LOCAL_REGISTRY" ;
             ;;
         "dockerhub")
            if _notexist "$DOCKER_USERNAME"; then _error "DOCKER_USERNAME EMPTY"; _func_end "1" ; return 1 ; fi
@@ -418,6 +453,7 @@ _container_rshell () {
 
     if _notexist "$1"; then _error "DOCKER_FILE EMPTY"; _func_end "1" ; return 1 ; fi
     if _filenotexist "$1"; then _error "DOCKER_FILE:$1 does not exist"; _func_end "1" ; return 1 ; fi
+    if _notinstalled "docker"; then _error "docker not found"; _func_end "1" ; return 1 ; fi
 
     _debug "DOCKER_FILE:$1"
 
@@ -458,6 +494,7 @@ _build () {
     if _filenotexist "$1"; then _error "DOCKER_FILE:$1 does not exist"; _func_end "1" ; return 1 ; fi
     if _notexist "$2"; then _error "TARGET EMPTY"; _func_end "1" ; return 1 ; fi
     if _notexist "$3"; then _error "DISTRIB EMPTY"; _func_end "1" ; return 1 ; fi
+    if _notinstalled "docker"; then _error "docker not found"; _func_end "1" ; return 1 ; fi
 
     _debug "DOCKER_FILE:$1"
     _debug "TARGET:$2"
@@ -498,9 +535,9 @@ _build () {
 
     case "$2" in
         "local")
-            __target="docker.intranet.local:5000" ;
-            __http_proxy="http://192.168.2.28:3142" ;
-            __https_proxy="http://192.168.2.28:3142" ;
+            __target="$LOCAL_REGISTRY" ;
+            __http_proxy="$HTTP_PROXY" ;
+            __https_proxy="$HTTP_PROXY" ;
             __output_build="type=registry"",registry.insecure=true"
             ;;
        "dockerhub")
@@ -536,7 +573,7 @@ insecure-entitlements = [ "network.host", "security.insecure", "device" ]
 [log]
   format = "text"
 
-[registry."docker.intranet.local:5000"]
+[registry."$LOCAL_REGISTRY"]
   http = true
 EOF
 
@@ -597,7 +634,7 @@ _get_image_version () {
 
     case "$2" in
         "local")
-            __url="http://docker.intranet.local:5000"
+            __url="http://$LOCAL_REGISTRY"
             __token=""
             __header="Accept: application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json, application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.docker.distribution.manifest.v2+json"
             ;;
@@ -605,7 +642,7 @@ _get_image_version () {
             if _notexist "$DOCKER_USERNAME"; then _error "DOCKER_USERNAME EMPTY"; _func_end "1" ; return 1 ; fi
             __url="https://registry-1.docker.io"
             __image="$DOCKER_USERNAME/$__image"
-            __token=$(curl -s "https://auth.docker.io/token?service=registry.docker.io&scope=repository:$__image:pull" | jq -r '.token')
+            __token=$(_curl "GET" "https://auth.docker.io/token?service=registry.docker.io&scope=repository:$__image:pull" | jq -r '.token')
             __header="Accept: application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json, application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.docker.distribution.manifest.v2+json"
             ;;
         *) _error "target must be local or dockerhub"; _func_end "1" ; return 1 ;;
@@ -622,7 +659,7 @@ _get_image_version () {
         done
     done | sort -u | cut -d: -f2 | cut -d\" -f2
 
-    _func_end
+    _func_end "0" ; return 0
 }
 
 #
@@ -634,6 +671,7 @@ _build_all () {
     if _workingdir_isnot "$MY_GIT_DIR/docker" ; then _error "running _build_all outside of $MY_GIT_DIR/docker is not supported"; _func_end "1" ; return 1 ; fi
 
     if _notexist "$1"; then _error "TARGET EMPTY"; _func_end "1" ; return 1 ; fi
+    if _notinstalled "docker"; then _error "docker not found"; _func_end "1" ; return 1 ; fi
 
     case "$1" in
         "local") true ;;
@@ -670,6 +708,12 @@ _build_all () {
 ####################################################################################################
 _process_lib_docker () {
     _func_start
+
+    if ! _load_conf "$MY_GIT_DIR/docker/conf/my_docker.conf"; then _error "something went wrong when loading docker conf" ; _usage ; _func_end "1" ; return 1 ; fi
+
+    _debug "HTTP_PROXY:$HTTP_PROXY"
+    _debug "HTTPS_PROXY:$HTTPS_PROXY"
+    _debug "LOCAL_REGISTRY:$LOCAL_REGISTRY"
 
     eval set -- "$@"
 
