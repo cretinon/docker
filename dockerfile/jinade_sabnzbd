@@ -50,7 +50,7 @@ RUN if [ "$DISTRIB" = "alpine" ]; then  echo "**** install sabnzbd ****" && \
     apprise \
     pynzb \
     requests && \
-  pip install -U --no-cache-dir --find-links https://wheel-index.linuxserver.io/alpine-3.22/ -r requirements.txt
+  pip install -U --no-cache-dir --find-links https://wheel-index.linuxserver.io/alpine-3.22/ -r requirements.txt ; fi
 
 ENV HTTP_PROXY=
 ENV HTTPS_PROXY=
