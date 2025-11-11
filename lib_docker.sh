@@ -709,7 +709,7 @@ _build_all () {
 _process_lib_docker () {
     _func_start
 
-    if ! _load_conf "$MY_GIT_DIR/docker/conf/my_docker.conf"; then _error "something went wrong when loading docker conf" ; _usage ; _func_end "1" ; return 1 ; fi
+    if ! _load_conf "$MY_GIT_DIR/docker/conf/docker.conf"; then _error "something went wrong when loading docker conf" ; _usage ; _func_end "1" ; return 1 ; fi
 
     _debug "HTTP_PROXY:$HTTP_PROXY"
     _debug "HTTPS_PROXY:$HTTPS_PROXY"
