@@ -1,7 +1,7 @@
 version: 2.1
 
-orbs:
-  codecov: codecov/codecov@5
+#orbs:
+#  codecov: codecov/codecov@5
 
 commands:
   circleci-image-update:
@@ -32,12 +32,22 @@ commands:
           name: Install kcov
           command: cd /tmp ; wget http://archive.ubuntu.com/ubuntu/pool/universe/k/kcov/kcov_43+dfsg-2_amd64.deb ; sudo dpkg -i kcov_43+dfsg-2_amd64.deb
 
-  install-make:
-    description: 'install make from apt'
+#  install-make:
+#    description: 'install make from apt'
+#    steps:
+#      - run:
+#          name: Install make
+#          command: sudo apt install -y make
+
+  install-codecov:
+    description: 'install pip && pipx from apt then codecov from pipx'
     steps:
       - run:
-          name: Install make
-          command: sudo apt install -y make
+          name: Install pip
+          command: sudo apt install -y pip pipx
+      - run:
+          name: Install codecov
+          command: pipx install codecov-cli
 
   checkout-prereq:
     description: 'mkdir'
@@ -72,7 +82,8 @@ commands:
     steps:
       - run:
           name: Run shellcheck
-          command: shellcheck git/docker/lib_docker.sh
+          command: cd "${HOME}/project/git/docker" && MY_GIT_DIR="${HOME}/project/git" ${HOME}/project/git/shell/my_warp.sh --lib docker -s
+#          command: shellcheck git/docker/lib_docker.sh
 
   run-bats:
     description: 'run bats'
@@ -86,14 +97,15 @@ commands:
     steps:
       - run:
           name: Run kcov
-          command: cd "${HOME}/project/git/docker" && MY_GIT_DIR="${HOME}/project/git" kcov --exclude-path=.git/,README.md,/usr/,.codecov.yml --include-path="${HOME}/project/git/docker"  /tmp/dest_kcov ${HOME}/project/git/shell/my_warp.sh --lib docker -b
+          command: cd "${HOME}/project/git/docker" && MY_GIT_DIR="${HOME}/project/git" ${HOME}/project/git/shell/my_warp.sh -d -v --lib docker -k
+#          command: cd "${HOME}/project/git/docker" && MY_GIT_DIR="${HOME}/project/git" kcov --exclude-path=.git/,README.md,/usr/,.codecov.yml --include-path="${HOME}/project/git/docker"  /tmp/dest_kcov ${HOME}/project/git/shell/my_warp.sh --lib docker -b
 
-  build-image-using-my_warp:
-    description: 'build_all using my_warp'
-    steps:
-      - run:
-          name: build_all using my_warp
-          command: cd "${HOME}/project/git/docker" ; ${HOME}/project/git/shell/my_warp.sh -d -v --lib docker build --target dockerhub --distrib debian --docker_file dockerfile/jinade_base ; ${HOME}/project/git/shell/my_warp.sh -d -v --lib docker build --target dockerhub --distrib alpine --docker_file dockerfile/jinade_base
+#  build-image-using-my_warp:
+#    description: 'build_all using my_warp'
+#    steps:
+#      - run:
+#          name: build_all using my_warp
+#          command: cd "${HOME}/project/git/docker" ; ${HOME}/project/git/shell/my_warp.sh -d -v --lib docker build --target dockerhub --distrib debian --docker_file dockerfile/jinade_base ; ${HOME}/project/git/shell/my_warp.sh -d -v --lib docker build --target dockerhub --distrib alpine --docker_file dockerfile/jinade_base
 
 jobs:
   build-and-test:
@@ -104,25 +116,26 @@ jobs:
       - install-bats
       - install-shellcheck
       - install-kcov
-      - install-make
+#      - install-make
+      - install-codecov
       - checkout-prereq
       - checkout:
           path: git/docker
       - checkout-libshell
       - prepare-our-environment
       - circleci-image-result
-      - run-shellcheck
       - setup_remote_docker:
           docker_layer_caching: true
+      - run-shellcheck
       - run-bats
       - run-kcov
-      - store_artifacts:
-          path: /tmp/dest_kcov
-      - codecov/upload:
-          files: /tmp/dest_kcov/my_warp.sh/cobertura.xml
-          slug: cretinon/docker
-          git_service: github
-      - build-image-using-my_warp
+#      - store_artifacts:
+#          path: /tmp/dest_kcov
+#      - codecov/upload:
+#          files: /tmp/dest_kcov/my_warp.sh/cobertura.xml
+#          slug: cretinon/docker
+#          git_service: github
+#      - build-image-using-my_warp
 
 
 workflows:
