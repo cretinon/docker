@@ -43,6 +43,11 @@ setup() {
   assert_output --partial "testvol"
 }
 
+@test "_volume_get_mount_point" {
+  run $MY_GIT_DIR/shell/my_warp.sh --lib docker volume_get_mount_point --volume_name testvol
+  assert_success
+}
+
 @test "_volume_remove" {
   run $MY_GIT_DIR/shell/my_warp.sh --lib docker volume_remove --volume_name testvol
   assert_success

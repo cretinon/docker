@@ -109,6 +109,29 @@ _volume_remove () {
 }
 
 #
+# usage: _volume_get_mount_point --volume_name name ($1)
+#
+_volume_get_mount_point () {
+    _func_start
+
+    if _notexist "$1"; then _error "volume_name empty"; _func_end "1" ; return 1 ; fi
+    if _notinstalled "docker"; then _error "docker not found"; _func_end "1" ; return 1 ; fi
+
+    _debug "volume_name:$1"
+
+    local __return
+
+    if docker volume ls | $GREP "$1" > /dev/null; then
+        docker volume inspect "$1" --format json | jq -r '.[].Mountpoint'
+        __return=$?
+    else
+        _warning "volume doesnt exist" ; _func_end "1" ; return 1
+    fi
+
+    _func_end "$__return" ; return "$__return"
+}
+
+#
 # usage: _network_create --network_name name ($1) --driver driver ($2) --subnet 172.xx.0.0/16 ($3) --gateway 172.xx.xxx.xxx ($4)
 #
 _network_create () {
@@ -757,6 +780,7 @@ _process_lib_docker () {
             volume_list )	                  _volume_list                                                                                  ; __return=$? ; break ;;
             volume_create )	                  _volume_create                         "$__volume_name"                                       ; __return=$? ; break ;;
             volume_remove )	                  _volume_remove                         "$__volume_name"                                       ; __return=$? ; break ;;
+            volume_get_mount_point)               _volume_get_mount_point                "$__volume_name"                                       ; __return=$? ; break ;;
             network_remove )	                  _network_remove                        "$__network_name"                                      ; __return=$? ; break ;;
             container_filelog_show )              _container_filelog_show                                                                       ; __return=$? ; break ;;
             container_filelog_truncate )          _container_filelog_truncate                                                                   ; __return=$? ; break ;;
