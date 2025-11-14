@@ -524,6 +524,52 @@ _container_rshell () {
 }
 
 #
+# usage: _container_get_network_ip --container_name name ($1)
+#
+_container_get_network_ip () {
+    _func_start
+
+    if _notexist "$1"; then _error "CONTAINER_NAME EMPTY"; _func_end "1" ; return 1 ; fi
+    if _notinstalled "docker"; then _error "docker not found"; _func_end "1" ; return 1 ; fi
+    if _notinstalled "jq"; then _error "jq not found"; _func_end "1" ; return 1 ; fi
+
+    docker container inspect -f json "$1" | jq -r '.[].NetworkSettings.Networks | keys[] as $k | "\($k), \(.[$k] | .IPAddress)"' | sed -e 's/, /;/'
+
+    _func_end "0" ; return 0
+}
+
+#
+# usage: _container_get_ip --container_name name ($1) --network_name name ($2)
+#
+_container_get_ip () {
+    _func_start
+
+    if _notexist "$1"; then _error "CONTAINER_NAME EMPTY"; _func_end "1" ; return 1 ; fi
+    if _notexist "$2"; then _error "NETWORK_NAME EMPTY"; _func_end "1" ; return 1 ; fi
+    if _notinstalled "docker"; then _error "docker not found"; _func_end "1" ; return 1 ; fi
+    if _notinstalled "jq"; then _error "jq not found"; _func_end "1" ; return 1 ; fi
+
+    docker container inspect -f json "$1" | jq -r '.[].NetworkSettings.Networks.'"$2"'.IPAddress'
+
+    _func_end "0" ; return 0
+}
+
+#
+# usage: _container_get_network --container_name name ($1)
+#
+_container_get_network () {
+    _func_start
+
+    if _notexist "$1"; then _error "CONTAINER_NAME EMPTY"; _func_end "1" ; return 1 ; fi
+    if _notinstalled "docker"; then _error "docker not found"; _func_end "1" ; return 1 ; fi
+    if _notinstalled "jq"; then _error "jq not found"; _func_end "1" ; return 1 ; fi
+
+    docker container inspect -f json "$1" | jq -r '.[].NetworkSettings.Networks | keys[] as $k | "\($k)"'
+
+    _func_end "0" ; return 0
+}
+
+#
 # usage: _build --docker_file file ($1) --target local/dockerhub ($2) --distrib debian/alpine ($3) --force true/false ($4)
 #
 _build () {
@@ -811,6 +857,9 @@ _process_lib_docker () {
             container_stop)	                  _container_stop                        "$__docker_file"                                       ; __return=$? ; break ;;
             container_rshell)	                  _container_rshell                      "$__docker_file" "$__cmd"                              ; __return=$? ; break ;;
             container_shell)	                  _container_shell                       "$__docker_file" "$__target" "$__distrib" "$__cmd"     ; __return=$? ; break ;;
+            container_get_ip)	                  _container_get_ip                      "$__container_name" "$__network_name"                  ; __return=$? ; break ;;
+            container_get_network_ip)	          _container_get_network_ip              "$__container_name"                                    ; __return=$? ; break ;;
+            container_get_network)	          _container_get_network                 "$__container_name"                                    ; __return=$? ; break ;;
             build_all)	                          _build_all                             "$__target" "$__force"                                 ; __return=$? ; break ;;
             -- ) shift ;;
             *) _error "command $1 not found" ; __return=1 ; break ;;
