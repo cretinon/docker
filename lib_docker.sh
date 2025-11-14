@@ -260,6 +260,22 @@ _compose_file_from_running_container () {
 ############################################ CONTAINER #############################################
 ####################################################################################################
 #
+# usage: _container_list_verbose
+#
+_container_list_verbose () {
+    _func_start
+
+    if _notinstalled "docker"; then _error "docker not found"; _func_end "1" ; return 1 ; fi
+
+    local __return
+
+    docker ps -a --format json | jq -r
+    __return=$?
+
+    _func_end "$__return" ; return "$__return"
+}
+
+#
 # usage: _container_list
 #
 _container_list () {
@@ -786,6 +802,7 @@ _process_lib_docker () {
             container_filelog_truncate )          _container_filelog_truncate                                                                   ; __return=$? ; break ;;
             container_log_show )                  _container_log_show                    "$__container_name"                                    ; __return=$? ; break ;;
             container_list )	                  _container_list                                                                               ; __return=$? ; break ;;
+            container_list_verbose )	          _container_list_verbose                                                                       ; __return=$? ; break ;;
             system_df )	                          _system_df                                                                                    ; __return=$? ; break ;;
             system_reclaim )	                  _system_reclaim                                                                               ; __return=$? ; break ;;
             get_image_version)	                  _get_image_version                     "$__docker_file" "$__target" "$__distrib"              ; __return=$? ; break ;;
