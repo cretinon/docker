@@ -177,6 +177,17 @@ _network_list () {
 }
 
 #
+# usage: _network_exist --network_name name ($1)
+#
+_network_exist () {
+    _func_start
+
+    if _notexist "$1"; then _error "network_name EMPTY ('main --docker network_list' to list active networkss)"; _func_end "1" ; return 1 ; fi
+
+    if _network_list | $GREP -w "$1" > /dev/null ; then _func_end "0" ; return 0 ; else _func_end "1" ; return 1 ; fi
+}
+
+#
 # usage: _network_remove --network_name name ($1)
 #
 _network_remove () {
@@ -289,6 +300,17 @@ _container_list () {
     __return=$?
 
     _func_end "$__return" ; return "$__return"
+}
+
+#
+# usage: _container_exist --container_name name ($1)
+#
+_container_exist () {
+    _func_start
+
+    if _notexist "$1"; then _error "container_name EMPTY ('main --docker container_list' to list active containers)"; _func_end "1" ; return 1 ; fi
+
+    if _container_list | $GREP -w "$1" > /dev/null ; then _func_end "0" ; return 0 ; else _func_end "1" ; return 1 ; fi
 }
 
 #
@@ -532,10 +554,17 @@ _container_get_network_ip () {
     if _notexist "$1"; then _error "CONTAINER_NAME EMPTY"; _func_end "1" ; return 1 ; fi
     if _notinstalled "docker"; then _error "docker not found"; _func_end "1" ; return 1 ; fi
     if _notinstalled "jq"; then _error "jq not found"; _func_end "1" ; return 1 ; fi
+    if ! _container_exist "$1" ; then _error "CONTAINER does not exist"; _func_end "1" ; return 1 ; fi
 
-    docker container inspect -f json "$1" | jq -r '.[].NetworkSettings.Networks | keys[] as $k | "\($k), \(.[$k] | .IPAddress)"' | sed -e 's/, /;/'
+    local __return=0
+    local __result
 
-    _func_end "0" ; return 0
+    __result=$(docker container inspect -f json "$1" 2>/dev/null)
+    __return=$?
+
+    echo "$__result"  | jq -r '.[].NetworkSettings.Networks | keys[] as $k | "\($k), \(.[$k] | .IPAddress)"' | sed -e 's/, /;/'
+
+    _func_end "$__return" ; return $__return
 }
 
 #
@@ -548,6 +577,7 @@ _container_get_ip () {
     if _notexist "$2"; then _error "NETWORK_NAME EMPTY"; _func_end "1" ; return 1 ; fi
     if _notinstalled "docker"; then _error "docker not found"; _func_end "1" ; return 1 ; fi
     if _notinstalled "jq"; then _error "jq not found"; _func_end "1" ; return 1 ; fi
+    if ! _container_exist "$1" ; then _error "CONTAINER does not exist"; _func_end "1" ; return 1 ; fi
 
     docker container inspect -f json "$1" | jq -r '.[].NetworkSettings.Networks.'"$2"'.IPAddress'
 
@@ -563,8 +593,27 @@ _container_get_network () {
     if _notexist "$1"; then _error "CONTAINER_NAME EMPTY"; _func_end "1" ; return 1 ; fi
     if _notinstalled "docker"; then _error "docker not found"; _func_end "1" ; return 1 ; fi
     if _notinstalled "jq"; then _error "jq not found"; _func_end "1" ; return 1 ; fi
+    if ! _container_exist "$1" ; then _error "CONTAINER does not exist"; _func_end "1" ; return 1 ; fi
 
     docker container inspect -f json "$1" | jq -r '.[].NetworkSettings.Networks | keys[] as $k | "\($k)"'
+
+    _func_end "0" ; return 0
+}
+
+#
+# usage: _container_connect_to_network --container_name name ($1) --network_name name ($2)
+#
+_container_connect_to_network () {
+    _func_start
+
+    if _notexist "$1"; then _error "CONTAINER_NAME EMPTY"; _func_end "1" ; return 1 ; fi
+    if _notexist "$2"; then _error "NETWORK_NAME EMPTY"; _func_end "1" ; return 1 ; fi
+    if _notinstalled "docker"; then _error "docker not found"; _func_end "1" ; return 1 ; fi
+    if _notinstalled "jq"; then _error "jq not found"; _func_end "1" ; return 1 ; fi
+    if ! _container_exist "$1" ; then _error "CONTAINER does not exist"; _func_end "1" ; return 1 ; fi
+    if ! _network_exist "$2" ; then _error "NETWORK does not exist"; _func_end "1" ; return 1 ; fi
+
+    docker network connect "$2" "$1"
 
     _func_end "0" ; return 0
 }
@@ -860,6 +909,7 @@ _process_lib_docker () {
             container_get_ip)	                  _container_get_ip                      "$__container_name" "$__network_name"                  ; __return=$? ; break ;;
             container_get_network_ip)	          _container_get_network_ip              "$__container_name"                                    ; __return=$? ; break ;;
             container_get_network)	          _container_get_network                 "$__container_name"                                    ; __return=$? ; break ;;
+            container_connect_to_network)         _container_connect_to_network          "$__container_name" "$__network_name"                  ; __return=$? ; break ;;
             build_all)	                          _build_all                             "$__target" "$__force"                                 ; __return=$? ; break ;;
             -- ) shift ;;
             *) _error "command $1 not found" ; __return=1 ; break ;;
