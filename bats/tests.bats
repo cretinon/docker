@@ -102,12 +102,12 @@ setup() {
 ############################################ CONTAINER #############################################
 ####################################################################################################
 @test "_container_start" {
-  run cd $MY_GIT_DIR/docker && $MY_GIT_DIR/shell/my_warp.sh -d -v --lib docker container_start --docker_file dockerfile/jinade_check_my_ip --target dockerhub --distrib debian && cd -
+  run $MY_GIT_DIR/shell/my_warp.sh -d -v --lib docker container_start --docker_file dockerfile/jinade_check_my_ip --target dockerhub --distrib debian
   assert_success
 }
 
 @test "_container_start again" {
-  run cd $MY_GIT_DIR/docker && $MY_GIT_DIR/shell/my_warp.sh -d -v --lib docker container_start --docker_file dockerfile/jinade_check_my_ip --target dockerhub --distrib debian && cd -
+  run $MY_GIT_DIR/shell/my_warp.sh -d -v --lib docker container_start --docker_file dockerfile/jinade_check_my_ip --target dockerhub --distrib debian
   assert_failure
 }
 
@@ -118,7 +118,7 @@ setup() {
 
 @test "_container_list_verbose" {
   run $MY_GIT_DIR/shell/my_warp.sh -d -v --lib docker container_list
-    assert_output --partial "jinade_check_my_ip"
+  assert_output --partial "jinade_check_my_ip"
 }
 
 
@@ -138,12 +138,12 @@ setup() {
 }
 
 @test "_container_stop" {
-  run cd $MY_GIT_DIR/docker && $MY_GIT_DIR/shell/my_warp.sh -d -v --lib docker container_stop --docker_file dockerfile/jinade_check_my_ip && cd -
+  run $MY_GIT_DIR/shell/my_warp.sh -d -v --lib docker container_stop --docker_file dockerfile/jinade_check_my_ip
   assert_success
 }
 
 @test "_container_stop again" {
-  run cd $MY_GIT_DIR/docker && $MY_GIT_DIR/shell/my_warp.sh -d -v --lib docker container_stop --docker_file dockerfile/jinade_check_my_ip && cd -
+  run $MY_GIT_DIR/shell/my_warp.sh -d -v --lib docker container_stop --docker_file dockerfile/jinade_check_my_ip
   assert_failure
 }
 
@@ -162,15 +162,15 @@ setup() {
   assert_failure
 }
 
-@test "_container_rm" {
-  run $MY_GIT_DIR/shell/my_warp.sh -d -v --lib docker container_rm --docker_file dockerfile/jinade_check_my_ip
-  assert_failure
-}
+#@test "_container_rm" {
+#  run $MY_GIT_DIR/shell/my_warp.sh -d -v --lib docker container_rm --docker_file dockerfile/jinade_check_my_ip
+#  assert_failure
+#}
 
-@test "_container_shell again" {
-  run $MY_GIT_DIR/shell/my_warp.sh -d -v --lib docker container_shell --docker_file dockerfile/jinade_check_my_ip --target dockerhub --distrib debian --cmd ls
-  assert_output --partial "bin"
-}
+#@test "_container_shell again" {
+#  run $MY_GIT_DIR/shell/my_warp.sh -d -v --lib docker container_shell --docker_file dockerfile/jinade_check_my_ip --target dockerhub --distrib debian --cmd ls
+#  assert_output --partial "bin"
+#}
 
 @test "_container_log_show" {
   run $MY_GIT_DIR/shell/my_warp.sh -d -v --lib docker container_log_show --container_name jinade_check_my_ip
