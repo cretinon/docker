@@ -11,6 +11,8 @@
 _install_docker () {
     _func_start
 
+    if _installed "docker"; then _func_end "0" ; return 0 ; fi # no _shellcheck
+
     _warning ""
     _warning "If you'r using apt-cacher-ng as proxy, be sure you have something like :"
     _warning "    PassThroughPattern: ^download\.docker\.com:443$"
