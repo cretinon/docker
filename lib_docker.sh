@@ -296,7 +296,7 @@ _container_list () {
 
     local __return
 
-    docker ps -a --format json | jq -M -r '.Names + " " + .State'
+    docker ps -a --format json | jq -r '.Names + " " + .State + " " + .Image'
     __return=$?
 
     _func_end "$__return" ; return "$__return"
@@ -311,6 +311,25 @@ _container_exist () {
     if _notexist "$1"; then _error "container_name EMPTY ('main --docker container_list' to list active containers)"; _func_end "1" ; return 1 ; fi
 
     if _container_list | $GREP -w "$1" > /dev/null ; then _func_end "0" ; return 0 ; else _func_end "1" ; return 1 ; fi
+}
+
+#
+# usage: _container_get_name_from_image --image_name name ($1)
+#
+_container_get_name_from_image () {
+    _func_start
+
+    if _notexist "$1"; then _error "image_name EMPTY"; _func_end "1" ; return 1 ; fi
+
+    local __result
+
+    __result=$(_container_list | $GREP -w "$1" | cut -d\  -f1)
+
+    if _notexist "$__result"; then _error "image_name not found"; _func_end "1" ; return 1 ; fi
+
+    echo $__result
+
+    _func_end "0" ; return 0
 }
 
 #
@@ -862,6 +881,7 @@ _process_lib_docker () {
     local __distrib
     local __force
     local __cmd
+    local __image_name
     local __return
 
     while true ; do
@@ -877,6 +897,7 @@ _process_lib_docker () {
             --distrib )        __distrib=$2           ; shift ; shift         ;;
             --force )          __force=$2             ; shift ; shift         ;;
             --cmd )            __cmd=$2               ; shift ; shift         ;;
+            --image_name )     __image_name=$2        ; shift ; shift         ;;
             -- )                                        shift ;         break ;;
             * )                                         shift                 ;;
         esac
@@ -910,6 +931,7 @@ _process_lib_docker () {
             container_get_network_ip)	          _container_get_network_ip              "$__container_name"                                    ; __return=$? ; break ;;
             container_get_network)	          _container_get_network                 "$__container_name"                                    ; __return=$? ; break ;;
             container_connect_to_network)         _container_connect_to_network          "$__container_name" "$__network_name"                  ; __return=$? ; break ;;
+            container_get_name_from_image)        _container_get_name_from_image         "$__image_name"                                        ; __return=$? ; break ;;
             build_all)	                          _build_all                             "$__target" "$__force"                                 ; __return=$? ; break ;;
             -- ) shift ;;
             *) _error "command $1 not found" ; __return=1 ; break ;;
