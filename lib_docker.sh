@@ -968,23 +968,22 @@ _process_lib_docker () {
     while true ; do
         case "$1" in
             install )                             _install_docker                                                                               ; __return=$? ; break ;;
-            compose_file_from_running_container ) _compose_file_from_running_container   "$__container_name"                                    ; __return=$? ; break ;;
-            network_list )                        _network_list                                                                                 ; __return=$? ; break ;;
-            network_create )	                  _network_create                        "$__network_name" "$__driver" "$__subnet" "$__gateway" ; __return=$? ; break ;;
+
             volume_list )	                  _volume_list                                                                                  ; __return=$? ; break ;;
             volume_create )	                  _volume_create                         "$__volume_name"                                       ; __return=$? ; break ;;
             volume_remove )	                  _volume_remove                         "$__volume_name"                                       ; __return=$? ; break ;;
             volume_get_mount_point)               _volume_get_mount_point                "$__volume_name"                                       ; __return=$? ; break ;;
+
+            network_list )                        _network_list                                                                                 ; __return=$? ; break ;;
+            network_create )	                  _network_create                        "$__network_name" "$__driver" "$__subnet" "$__gateway" ; __return=$? ; break ;;
             network_remove )	                  _network_remove                        "$__network_name"                                      ; __return=$? ; break ;;
-            filelog_show )                        _filelog_show                                                                                 ; __return=$? ; break ;;
-            filelog_truncate )                    _filelog_truncate                                                                             ; __return=$? ; break ;;
-            container_log_show )                  _container_log_show                    "$__container_name"                                    ; __return=$? ; break ;;
-            container_list )	                  _container_list                                                                               ; __return=$? ; break ;;
-            container_list_verbose )	          _container_list_verbose                                                                       ; __return=$? ; break ;;
+
             system_df )	                          _system_df                                                                                    ; __return=$? ; break ;;
             system_reclaim )	                  _system_reclaim                                                                               ; __return=$? ; break ;;
             get_image_version)	                  _get_image_version                     "$__docker_file" "$__target" "$__distrib"              ; __return=$? ; break ;;
-            build)	                          _build                                 "$__docker_file" "$__target" "$__distrib" "$__force"   ; __return=$? ; break ;;
+            filelog_show )                        _filelog_show                                                                                 ; __return=$? ; break ;;
+            filelog_truncate )                    _filelog_truncate                                                                             ; __return=$? ; break ;;
+
             container_start)	                  _container_start                       "$__docker_file" "$__target" "$__distrib"              ; __return=$? ; break ;;
             container_stop)	                  _container_stop                        "$__docker_file"                                       ; __return=$? ; break ;;
             container_rm)	                  _container_rm                          "$__docker_file"                                       ; __return=$? ; break ;;
@@ -995,6 +994,13 @@ _process_lib_docker () {
             container_get_network)	          _container_get_network                 "$__container_name"                                    ; __return=$? ; break ;;
             container_connect_to_network)         _container_connect_to_network          "$__container_name" "$__network_name"                  ; __return=$? ; break ;;
             container_get_name_from_image)        _container_get_name_from_image         "$__image_name"                                        ; __return=$? ; break ;;
+            container_log_show )                  _container_log_show                    "$__container_name"                                    ; __return=$? ; break ;;
+            container_list )	                  _container_list                                                                               ; __return=$? ; break ;;
+            container_list_verbose )	          _container_list_verbose                                                                       ; __return=$? ; break ;;
+
+            compose_file_from_running_container ) _compose_file_from_running_container   "$__container_name"                                    ; __return=$? ; break ;;
+
+            build)	                          _build                                 "$__docker_file" "$__target" "$__distrib" "$__force"   ; __return=$? ; break ;;
             build_all)	                          _build_all                             "$__target" "$__force"                                 ; __return=$? ; break ;;
             -- ) shift ;;
             *) _error "command $1 not found" ; __return=1 ; break ;;

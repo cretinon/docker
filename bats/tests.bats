@@ -121,16 +121,31 @@ setup() {
   assert_output --partial "jinade_check_my_ip"
 }
 
+@test "_network_create last" {
+  run $MY_GIT_DIR/shell/my_warp.sh --lib docker network_create --network_name testnet --driver bridge --subnet 172.254.0.0/16 --gateway 172.254.0.1
+  assert_failure
+}
 
+@test "_container_connect_to_network" {
+  run $MY_GIT_DIR/shell/my_warp.sh -d -v --lib docker container_connect_to_network --container_name jinade_check_my_ip --network_name testnet
+  assert_success
+}
 
+@test "_container_get_network" {
+  run $MY_GIT_DIR/shell/my_warp.sh -d -v --lib docker container_get_network --container_name jinade_check_my_ip
+  assert_output "bridge
+testnet"
+}
 
+@test "_container_get_ip" {
+  run $MY_GIT_DIR/shell/my_warp.sh -d -v --lib docker container_get_ip --container_name jinade_check_my_ip --network_name testnet
+  assert_output --partial "172.254"
+}
 
-
-
-
-
-
-
+@test "_container_get_network_ip" {
+  run $MY_GIT_DIR/shell/my_warp.sh -d -v --lib docker container_get_network_ip --container_name jinade_check_my_ip
+  assert_output --partial "testnet;172.254"
+}
 
 @test "_container_rshell" {
   run $MY_GIT_DIR/shell/my_warp.sh -d -v --lib docker container_rshell --docker_file dockerfile/jinade_check_my_ip --cmd ls
@@ -157,6 +172,11 @@ setup() {
   assert_output --partial "jinade_check_my_ip exited"
 }
 
+@test "_container_get_name_from_image" {
+  run $MY_GIT_DIR/shell/my_warp.sh -d -v --lib docker container_get_name_from_image --image_name cretinon/jinade_check_my_ip
+  assert_output "jinade_check_my_ip"
+}
+
 @test "_container_shell" {
   run $MY_GIT_DIR/shell/my_warp.sh -d -v --lib docker container_shell --docker_file dockerfile/jinade_check_my_ip --target dockerhub --distrib debian --cmd ls
   assert_failure
@@ -165,11 +185,6 @@ setup() {
 #@test "_container_rm" {
 #  run $MY_GIT_DIR/shell/my_warp.sh -d -v --lib docker container_rm --docker_file dockerfile/jinade_check_my_ip
 #  assert_failure
-#}
-
-#@test "_container_shell again" {
-#  run $MY_GIT_DIR/shell/my_warp.sh -d -v --lib docker container_shell --docker_file dockerfile/jinade_check_my_ip --target dockerhub --distrib debian --cmd ls
-#  assert_output --partial "bin"
 #}
 
 @test "_container_log_show" {
