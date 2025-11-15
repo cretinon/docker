@@ -327,7 +327,7 @@ _container_get_name_from_image () {
 
     if _notexist "$__result"; then _error "image_name not found"; _func_end "1" ; return 1 ; fi
 
-    echo $__result
+    echo "$__result"
 
     _func_end "0" ; return 0
 }
