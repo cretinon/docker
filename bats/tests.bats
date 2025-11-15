@@ -25,9 +25,8 @@ setup() {
 }
 
 ####################################################################################################
-########################################### DOCKER ADMIN ###########################################
+########################################### VOLUME #################################################
 ####################################################################################################
-
 @test "_volume_create" {
   run $MY_GIT_DIR/shell/my_warp.sh --lib docker volume_create --volume_name testvol
   assert_success
@@ -58,6 +57,9 @@ setup() {
   assert_failure
 }
 
+####################################################################################################
+########################################### NETWORK ################################################
+####################################################################################################
 @test "_network_create" {
   run $MY_GIT_DIR/shell/my_warp.sh --lib docker network_create --network_name testnet --driver bridge --subnet 172.254.0.0/16 --gateway 172.254.0.1
   assert_success
@@ -83,6 +85,9 @@ setup() {
   assert_failure
 }
 
+####################################################################################################
+############################################# SYSTEM ###############################################
+####################################################################################################
 @test "_system_df" {
   run $MY_GIT_DIR/shell/my_warp.sh --lib docker system_df
   assert_output --partial "Containers"
@@ -93,15 +98,39 @@ setup() {
   assert_success
 }
 
+####################################################################################################
+############################################ CONTAINER #############################################
+####################################################################################################
 @test "_container_start" {
   run cd $MY_GIT_DIR/docker && $MY_GIT_DIR/shell/my_warp.sh -d -v --lib docker container_start --docker_file dockerfile/jinade_check_my_ip --target dockerhub --distrib debian && cd -
   assert_success
+}
+
+@test "_container_start again" {
+  run cd $MY_GIT_DIR/docker && $MY_GIT_DIR/shell/my_warp.sh -d -v --lib docker container_start --docker_file dockerfile/jinade_check_my_ip --target dockerhub --distrib debian && cd -
+  assert_failure
 }
 
 @test "_container_list" {
   run $MY_GIT_DIR/shell/my_warp.sh -d -v --lib docker container_list
   assert_output --partial "jinade_check_my_ip running"
 }
+
+@test "_container_list_verbose" {
+  run $MY_GIT_DIR/shell/my_warp.sh -d -v --lib docker container_list
+    assert_output --partial "jinade_check_my_ip"
+}
+
+
+
+
+
+
+
+
+
+
+
 
 @test "_container_rshell" {
   run $MY_GIT_DIR/shell/my_warp.sh -d -v --lib docker container_rshell --docker_file dockerfile/jinade_check_my_ip --cmd ls
@@ -113,16 +142,49 @@ setup() {
   assert_success
 }
 
+@test "_container_stop again" {
+  run cd $MY_GIT_DIR/docker && $MY_GIT_DIR/shell/my_warp.sh -d -v --lib docker container_stop --docker_file dockerfile/jinade_check_my_ip && cd -
+  assert_failure
+}
+
+@test "_container_rshell again" {
+  run $MY_GIT_DIR/shell/my_warp.sh -d -v --lib docker container_rshell --docker_file dockerfile/jinade_check_my_ip --cmd ls
+  assert_failure
+}
+
 @test "_container_list again" {
   run $MY_GIT_DIR/shell/my_warp.sh -d -v --lib docker container_list
   assert_output --partial "jinade_check_my_ip exited"
 }
 
 @test "_container_shell" {
-  run $MY_GIT_DIR/shell/my_warp.sh -d -v --lib docker container_shell --docker_file dockerfile/jinade_base --target dockerhub --distrib debian --cmd ls
+  run $MY_GIT_DIR/shell/my_warp.sh -d -v --lib docker container_shell --docker_file dockerfile/jinade_check_my_ip --target dockerhub --distrib debian --cmd ls
+  assert_failure
+}
+
+@test "_container_rm" {
+  run $MY_GIT_DIR/shell/my_warp.sh -d -v --lib docker container_rm --docker_file dockerfile/jinade_check_my_ip
+  assert_failure
+}
+
+@test "_container_shell" {
+  run $MY_GIT_DIR/shell/my_warp.sh -d -v --lib docker container_shell --docker_file dockerfile/jinade_check_my_ip --target dockerhub --distrib debian --cmd ls
   assert_output --partial "bin"
 }
 
+@test "_container_log_show" {
+  run $MY_GIT_DIR/shell/my_warp.sh -d -v --lib docker container_log_show --container_name jinade_check_my_ip
+  assert_output --partial "badauth"
+}
+
+@test "_container_log_show again" {
+  run $MY_GIT_DIR/shell/my_warp.sh -d -v --lib docker container_log_show --container_name idonotexist
+  assert_failure
+}
+
+####################################################################################################
+############################################## BUILD ###############################################
+####################################################################################################
 @test "_build_all" {
   run $MY_GIT_DIR/shell/my_warp.sh -d -v --lib docker build_all --target dockerhub
   assert_success

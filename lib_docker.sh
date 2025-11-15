@@ -40,35 +40,12 @@ _usage_docker () {
 
 Then call any function like : \n"
 
-    _func_end "0" ; return 0
+    _func_end "0" ; return 0 # no _shellcheck
 }
 
 ####################################################################################################
-########################################### DOCKER ADMIN ###########################################
+############################################## VOLUME ##############################################
 ####################################################################################################
-#
-# usage: _volume_create --volume_name name ($1)
-#
-_volume_create () {
-    _func_start
-
-    if _notexist "$1"; then _error "volume_name empty"; _func_end "1" ; return 1 ; fi
-    if _notinstalled "docker"; then _error "docker not found"; _func_end "1" ; return 1 ; fi
-
-    _debug "volume_name:$1"
-
-    local __return
-
-    if docker volume ls | $GREP "$1" > /dev/null; then
-        _warning "volume already exist" ; _func_end "1" ; return 1
-    else
-        docker volume create "$1"
-        __return=$?
-    fi
-
-    _func_end "$__return" ; return "$__return"
-}
-
 #
 # usage: _volume_list
 #
@@ -78,8 +55,39 @@ _volume_list () {
     if _notinstalled "docker"; then _error "docker not found"; _func_end "1" ; return 1 ; fi
 
     local __return
+    local __result
 
-    docker volume ls | awk '{print $2}' | $GREP -vw "VOLUME"
+    __result=$(docker volume ls)
+    __return=$?
+
+    echo "$__result"  | awk '{print $2}' | $GREP -vw "VOLUME"
+
+    _func_end "$__return" ; return "$__return"
+}
+
+_volume_exist () {
+    _func_start
+
+    if _notexist "$1"; then _error "volume_name EMPTY"; _func_end "1" ; return 1 ; fi
+
+    if _volume_list | $GREP -w "$1" > /dev/null ; then _func_end "0" ; return 0 ; else _func_end "1" ; return 1 ; fi # no _shellcheck
+}
+
+#
+# usage: _volume_create --volume_name name ($1)
+#
+_volume_create () {
+    _func_start
+
+    if _notexist "$1"; then _error "volume_name empty"; _func_end "1" ; return 1 ; fi
+    if _notinstalled "docker"; then _error "docker not found"; _func_end "1" ; return 1 ; fi
+    if _volume_exist "$1" ; then _error "VOLUME already exist"; _func_end "1" ; return 1 ; fi
+
+    _debug "volume_name:$1"
+
+    local __return
+
+    docker volume create "$1"
     __return=$?
 
     _func_end "$__return" ; return "$__return"
@@ -93,17 +101,14 @@ _volume_remove () {
 
     if _notexist "$1"; then _error "volume_name empty"; _func_end "1" ; return 1 ; fi
     if _notinstalled "docker"; then _error "docker not found"; _func_end "1" ; return 1 ; fi
+    if ! _volume_exist "$1" ; then _error "VOLUME does not exist"; _func_end "1" ; return 1 ; fi
 
     _debug "volume_name:$1"
 
     local __return
 
-    if docker volume ls | $GREP "$1" > /dev/null; then
-        docker volume remove "$1"
-        __return=$?
-    else
-        _warning "volume doesnt exist" ; _func_end "1" ; return 1
-    fi
+    docker volume remove "$1"
+    __return=$?
 
     _func_end "$__return" ; return "$__return"
 }
@@ -116,19 +121,50 @@ _volume_get_mount_point () {
 
     if _notexist "$1"; then _error "volume_name empty"; _func_end "1" ; return 1 ; fi
     if _notinstalled "docker"; then _error "docker not found"; _func_end "1" ; return 1 ; fi
+    if _notinstalled "jq"; then _error "jq not found"; _func_end "1" ; return 1 ; fi
+    if ! _volume_exist "$1" ; then _error "VOLUME does not exist"; _func_end "1" ; return 1 ; fi
 
     _debug "volume_name:$1"
 
+    local __result
     local __return
 
-    if docker volume ls | $GREP "$1" > /dev/null; then
-        docker volume inspect "$1" --format json | jq -r '.[].Mountpoint'
-        __return=$?
-    else
-        _warning "volume doesnt exist" ; _func_end "1" ; return 1
-    fi
+    __result=$(docker volume inspect "$1" --format json)
+    __return=$?
+
+    echo "$__result"  | jq -r '.[].Mountpoint'
 
     _func_end "$__return" ; return "$__return"
+}
+
+####################################################################################################
+############################################# NETWORK ##############################################
+####################################################################################################
+#
+# usage: _network_list
+#
+_network_list () {
+    _func_start
+
+    if _notinstalled "docker"; then _error "docker not found"; _func_end "1" ; return 1 ; fi
+
+    local __result
+    local __return
+
+    __result=$(docker network list)
+    __return=$?
+
+    echo "$__result"  | awk '{print $2}' | $GREP -vw ID
+
+    _func_end "$__return" ; return "$__return"
+}
+
+_network_exist () {
+    _func_start
+
+    if _notexist "$1"; then _error "network_name EMPTY"; _func_end "1" ; return 1 ; fi
+
+    if _network_list | $GREP -w "$1" > /dev/null ; then _func_end "0" ; return 0 ; else _func_end "1" ; return 1 ; fi # no _shellcheck
 }
 
 #
@@ -142,6 +178,7 @@ _network_create () {
     if _notexist "$3"; then _error "subnet EMPTY"; _func_end "1" ; return 1 ; fi
     if _notexist "$4"; then _error "gateway EMPTY"; _func_end "1" ; return 1 ; fi
     if _notinstalled "docker"; then _error "docker not found"; _func_end "1" ; return 1 ; fi
+    if _network_exist "$1" ; then _error "NETWORK already exist"; _func_end "1" ; return 1 ; fi
 
     _debug "network_name:$1"
     _debug "driver:$2"
@@ -150,41 +187,10 @@ _network_create () {
 
     local __return
 
-    if _network_list | $GREP -w "$1" > /dev/null; then
-        _warning "network already exist" ; _func_end "1" ; return 1
-    else
-        docker network create -d "$2" --subnet="$3" --gateway="$4" "$1"
-        __return=$?
-    fi
-
-    _func_end "$__return" ; return "$__return"
-}
-
-#
-# usage: _network_list
-#
-_network_list () {
-    _func_start
-
-    if _notinstalled "docker"; then _error "docker not found"; _func_end "1" ; return 1 ; fi
-
-    local __return
-
-    docker network list | awk '{print $2}' | $GREP -vw ID
+    docker network create -d "$2" --subnet="$3" --gateway="$4" "$1"
     __return=$?
 
     _func_end "$__return" ; return "$__return"
-}
-
-#
-# usage: _network_exist --network_name name ($1)
-#
-_network_exist () {
-    _func_start
-
-    if _notexist "$1"; then _error "network_name EMPTY ('main --docker network_list' to list active networkss)"; _func_end "1" ; return 1 ; fi
-
-    if _network_list | $GREP -w "$1" > /dev/null ; then _func_end "0" ; return 0 ; else _func_end "1" ; return 1 ; fi
 }
 
 #
@@ -195,21 +201,21 @@ _network_remove () {
 
     if _notexist "$1"; then _error "network_name EMPTY";_func_end "1" ; return 1 ; fi
     if _notinstalled "docker"; then _error "docker not found"; _func_end "1" ; return 1 ; fi
+    if ! _network_exist "$1" ; then _error "NETWORK doest not exist"; _func_end "1" ; return 1 ; fi
 
     _debug "network_name:$1"
 
-    local __return
+    local __return=0
 
-    if docker network list | $GREP -w "$1" > /dev/null; then
-        docker network remove "$1"
-        __return=$?
-    else
-        _warning "network alreadydoesnt exist" ; _func_end "1" ; return 1
-    fi
+    docker network remove "$1"
+    __return=$?
 
     _func_end "$__return" ; return "$__return"
 }
 
+####################################################################################################
+############################################# SYSTEM ###############################################
+####################################################################################################
 #
 # usage: _system_df
 #
@@ -243,49 +249,31 @@ _system_reclaim () {
 }
 
 #
-# usage: _compose_file_from_running_container --container_name name ($1)
+# usage: _filelog_show
 #
-_compose_file_from_running_container () {
+_filelog_show () {
     _func_start
 
-    if _notexist "$1"; then _error "container_name EMPTY"; _func_end "1" ; return 1 ; fi
-    if _notinstalled "docker"; then _error "docker not found"; _func_end "1" ; return 1 ; fi
+    ls -ailh /var/lib/docker/containers/*/*-json.log
 
-    _debug "container_name:$1"
+    _func_end "0" ; return 0 # no _shellcheck
+}
 
-    local __return
+#
+# usage: _filelog_truncate
+#
+_filelog_truncate () {
+    _func_start
 
-    echo ""
-    echo "####"
-    echo "paste it to https://www.composerize.com/"
-    echo "####"
-    echo ""
+    truncate -s 0 /var/lib/docker/containers/*/*-json.log
+    _container_filelog_show
 
-    docker run --rm -ti -v /var/run/docker.sock:/var/run/docker.sock bcicen/docker-replay -p "$1"
-    __return=$?
-
-    _func_end "$__return" ; return "$__return"
+    _func_end "0" ; return 0 # no _shellcheck
 }
 
 ####################################################################################################
 ############################################ CONTAINER #############################################
 ####################################################################################################
-#
-# usage: _container_list_verbose
-#
-_container_list_verbose () {
-    _func_start
-
-    if _notinstalled "docker"; then _error "docker not found"; _func_end "1" ; return 1 ; fi
-
-    local __return
-
-    docker ps -a --format json | jq -r
-    __return=$?
-
-    _func_end "$__return" ; return "$__return"
-}
-
 #
 # usage: _container_list
 #
@@ -293,77 +281,53 @@ _container_list () {
     _func_start
 
     if _notinstalled "docker"; then _error "docker not found"; _func_end "1" ; return 1 ; fi
+    if _notinstalled "jq"; then _error "jq not found"; _func_end "1" ; return 1 ; fi
 
+    local __result
     local __return
 
-    docker ps -a --format json | jq -r '.Names + " " + .State + " " + .Image'
+    __result=$(docker ps -a --format json)
     __return=$?
+
+    echo "$__result"  | jq -r '.Names + " " + .State + " " + .Image'
 
     _func_end "$__return" ; return "$__return"
 }
 
 #
-# usage: _container_exist --container_name name ($1)
+# usage: _container_list_verbose
 #
+_container_list_verbose () {
+    _func_start
+
+    if _notinstalled "docker"; then _error "docker not found"; _func_end "1" ; return 1 ; fi
+    if _notinstalled "jq"; then _error "jq not found"; _func_end "1" ; return 1 ; fi
+
+    local __result
+    local __return
+
+    __result=$(docker ps -a --format json)
+    __return=$?
+
+    echo "$__result"  | jq -r
+
+    _func_end "$__return" ; return "$__return"
+}
+
 _container_exist () {
     _func_start
 
-    if _notexist "$1"; then _error "container_name EMPTY ('main --docker container_list' to list active containers)"; _func_end "1" ; return 1 ; fi
+    if _notexist "$1"; then _error "container_name EMPTY"; _func_end "1" ; return 1 ; fi
 
-    if _container_list | $GREP -w "$1" > /dev/null ; then _func_end "0" ; return 0 ; else _func_end "1" ; return 1 ; fi
+    if _container_list | $GREP -w "$1" > /dev/null ; then _func_end "0" ; return 0 ; else _func_end "1" ; return 1 ; fi # no _shellcheck
 }
 
-#
-# usage: _container_get_name_from_image --image_name name ($1)
-#
-_container_get_name_from_image () {
+_container_running () {
     _func_start
 
-    if _notexist "$1"; then _error "image_name EMPTY"; _func_end "1" ; return 1 ; fi
+    if _notexist "$1"; then _error "container_name EMPTY"; _func_end "1" ; return 1 ; fi
 
-    local __result
-
-    __result=$(_container_list | $GREP -w "$1" | cut -d\  -f1)
-
-    if _notexist "$__result"; then _error "image_name not found"; _func_end "1" ; return 1 ; fi
-
-    echo "$__result"
-
-    _func_end "0" ; return 0
-}
-
-#
-# usage: _container_log_show --container_name name ($1)
-#
-_container_log_show () {
-    _func_start
-
-    if _notexist "$1"; then _error "container_name EMPTY ('main --docker container_list' to list active containers)"; _func_end "1" ; return 1 ; fi
-    if _notinstalled "docker"; then _error "docker not found"; _func_end "1" ; return 1 ; fi
-
-    _debug "container_name:$1"
-
-    local __return
-
-    docker logs -f "$1"
-    __return=$?
-
-    _func_end "$__return" ; return "$__return"
-}
-
-#
-# usage: _container_filelog_show
-#
-_container_filelog_show () {
-    ls -ailh /var/lib/docker/containers/*/*-json.log
-}
-
-#
-# usage: _container_filelog_truncate
-#
-_container_filelog_truncate () {
-    truncate -s 0 /var/lib/docker/containers/*/*-json.log
-    _container_filelog_show
+    if _container_list | $GREP -w "$1" | $GREP -w "running" > /dev/null ; then _func_end "0" ; return 0 ; else _func_end "1" ; return 1 ; fi # no _shellcheck
 }
 
 #
@@ -397,6 +361,8 @@ _container_start () {
     _debug "IMAGE:$__image"
     _debug "HOSTNAME:$__hostname"
 
+    if _container_exist "$__image" ; then _error "CONTAINER already exist"; _func_end "1" ; return 1 ; fi
+
     case "$2" in
         "local")
             __target="$LOCAL_REGISTRY" ;
@@ -408,20 +374,8 @@ _container_start () {
         *) _error "bad target $2 (must be local/dockerhub)"; _func_end "1" ; return 1 ;;
     esac
 
-    if _container_list | $GREP -w "$__image" | $GREP -w "exited" > /dev/null ; then
-        _warning "Can't start, container exist, but was exited, restarting"
-        docker restart "$__image" > /dev/null
-        __return=$?
-    else
-        if _container_list | $GREP -w "$__image" | $GREP -w "running" > /dev/null ; then
-            _warning "Can't start, container exist, and was exited, restarting"
-            docker restart "$__image" > /dev/null
-            __return=$?
-        else
-            docker run -d --name "$__image" --hostname "$__hostname" -e PGID="$__pgid" -e PUID="$__puid" "$__target"/"$__image":"$3" > /dev/null
-            __return=$?
-        fi
-    fi
+    docker run -d --name "$__image" --hostname "$__hostname" -e PGID="$__pgid" -e PUID="$__puid" "$__target"/"$__image":"$3" > /dev/null
+    __return=$?
 
     _func_end "$__return" ; return "$__return"
 }
@@ -445,16 +399,39 @@ _container_stop () {
 
     _debug "IMAGE:$__image"
 
-    if _container_list | $GREP -w "$__image" | $GREP -w "exited" > /dev/null ; then
-        _warning "Can't stop, container exist, but was already exited, doing nothing"
-    else
-        if _container_list | $GREP -w "$__image" | $GREP -w "running" > /dev/null ; then
-            docker container stop "$__image" > /dev/null
-            __return=$?
-        else
-            _warning "Can't stop, container doesn't exist, doing nothing"
-        fi
-    fi
+    if ! _container_exist "$__image" ; then _error "CONTAINER does not exist"; _func_end "1" ; return 1 ; fi
+    if ! _container_running "$__image" ; then _error "CONTAINER is not running"; _func_end "1" ; return 1 ; fi
+
+    docker container stop "$__image" > /dev/null
+    __return=$?
+
+    _func_end "$__return" ; return "$__return"
+}
+
+#
+# usage: _container_rm --docker_file file ($1)
+#
+_container_rm () {
+    _func_start
+
+    if _notexist "$1"; then _error "DOCKER_FILE EMPTY"; _func_end "1" ; return 1 ; fi
+    if _filenotexist "$1"; then _error "DOCKER_FILE:$1 does not exist"; _func_end "1" ; return 1 ; fi
+    if _notinstalled "docker"; then _error "docker not found"; _func_end "1" ; return 1 ; fi
+
+    _debug "DOCKER_FILE:$1"
+
+    local __image
+    local __return
+
+    __image=$(echo "$1" | cut -d. -f1 | cut -d/ -f2)
+
+    _debug "IMAGE:$__image"
+
+    if ! _container_exist "$__image" ; then _error "CONTAINER does not exist"; _func_end "1" ; return 1 ; fi
+    if _container_running "$__image" ; then _error "CONTAINER is running"; _func_end "1" ; return 1 ; fi
+
+    docker container rm "$__image" > /dev/null
+    __return=$?
 
     _func_end "$__return" ; return "$__return"
 }
@@ -488,6 +465,7 @@ _container_shell () {
     __pgid=$(id -g)
     __puid=$(id -u)
     __image=$(echo "$1" | cut -d. -f1 | cut -d/ -f2)
+
     if _notexist "$4"; then
         __cmd="/bin/bash"
     else
@@ -496,6 +474,8 @@ _container_shell () {
 
     _debug "IMAGE:$__image"
     _debug "HOSTNAME:$__hostname"
+
+    if _container_exist "$__image" ; then _error "CONTAINER exist, you may want to start then rshell or rm then shell"; _func_end "1" ; return 1 ; fi
 
     case "$2" in
         "local")
@@ -508,19 +488,8 @@ _container_shell () {
         *) _error "bad target $2 (must be local/dockerhub)"; _func_end "1" ; return 1 ;;
     esac
 
-    if _container_list | $GREP -w "$__image" | $GREP -w "exited" > /dev/null ; then
-        _warning "Can't start, container exist, but was exited, removing first"
-        docker container rm "$__image" > /dev/null
-        docker run --rm -it --name "$__image" --hostname "$__hostname" -e PGID="$__pgid" -e PUID="$__puid" "$__target"/"$__image":"$3" "$__cmd"
-        __return=$?
-    else
-        if _container_list | $GREP -w "$__image" | $GREP -w "running" > /dev/null ; then
-            _error "Can't shell, container exist, and is running, doing nothing, you may want to rshell" ; _func_end "1" ; return 1
-        else
-            docker run --rm -it --name "$__image" --hostname "$__hostname" -e PGID="$__pgid" -e PUID="$__puid" "$__target"/"$__image":"$3" "$__cmd"
-            __return=$?
-        fi
-    fi
+    docker run --rm -it --name "$__image" --hostname "$__hostname" -e PGID="$__pgid" -e PUID="$__puid" "$__target"/"$__image":"$3" "$__cmd"
+    __return=$?
 
     _func_end "$__return" ; return "$__return"
 }
@@ -542,6 +511,7 @@ _container_rshell () {
     local __return
 
     __image=$(echo "$1" | cut -d. -f1 | cut -d/ -f2)
+
     if _notexist "$2"; then
         __cmd="/bin/bash"
     else
@@ -550,40 +520,33 @@ _container_rshell () {
 
     _debug "IMAGE:$__image"
 
-    if _container_list | $GREP -w "$__image" | $GREP -w "exited" > /dev/null ; then
-        _error "Can't rshell, container exist, but is exited, you need to restart first" ; _func_end "1" ; return 1
-    else
-        if _container_list | $GREP -w "$__image" | $GREP -w "running" > /dev/null ; then
-            docker exec -u root -it "$__image" "$__cmd"
-            __return=$?
-        else
-            _error "Can't rshell, container doesn't exist, doing nothing" ; _func_end "1" ; return 1
-        fi
-    fi
+    if ! _container_exist "$__image" ; then _error "CONTAINER does not exist"; _func_end "1" ; return 1 ; fi
+    if ! _container_running "$__image" ; then _error "CONTAINER is not running"; _func_end "1" ; return 1 ; fi
+
+    docker exec -u root -it "$__image" "$__cmd"
+    __return=$?
 
     _func_end "$__return" ; return "$__return"
 }
 
 #
-# usage: _container_get_network_ip --container_name name ($1)
+# usage: _container_log_show --container_name name ($1)
 #
-_container_get_network_ip () {
+_container_log_show () {
     _func_start
 
-    if _notexist "$1"; then _error "CONTAINER_NAME EMPTY"; _func_end "1" ; return 1 ; fi
+    if _notexist "$1"; then _error "container_name EMPTY ('main --docker container_list' to list active containers)"; _func_end "1" ; return 1 ; fi
     if _notinstalled "docker"; then _error "docker not found"; _func_end "1" ; return 1 ; fi
-    if _notinstalled "jq"; then _error "jq not found"; _func_end "1" ; return 1 ; fi
     if ! _container_exist "$1" ; then _error "CONTAINER does not exist"; _func_end "1" ; return 1 ; fi
 
-    local __return=0
-    local __result
+    _debug "container_name:$1"
 
-    __result=$(docker container inspect -f json "$1" 2>/dev/null)
+    local __return
+
+    docker logs -f "$1"
     __return=$?
 
-    echo "$__result"  | jq -r '.[].NetworkSettings.Networks | keys[] as $k | "\($k), \(.[$k] | .IPAddress)"' | sed -e 's/, /;/'
-
-    _func_end "$__return" ; return $__return
+    _func_end "$__return" ; return "$__return"
 }
 
 #
@@ -597,10 +560,18 @@ _container_get_ip () {
     if _notinstalled "docker"; then _error "docker not found"; _func_end "1" ; return 1 ; fi
     if _notinstalled "jq"; then _error "jq not found"; _func_end "1" ; return 1 ; fi
     if ! _container_exist "$1" ; then _error "CONTAINER does not exist"; _func_end "1" ; return 1 ; fi
+    if ! _container_running "$1" ; then _error "CONTAINER is not running"; _func_end "1" ; return 1 ; fi
+    if ! _network_exist "$2" ; then _error "NETWORK does not exist"; _func_end "1" ; return 1 ; fi
 
-    docker container inspect -f json "$1" | jq -r '.[].NetworkSettings.Networks.'"$2"'.IPAddress'
+    local __result
+    local __return
 
-    _func_end "0" ; return 0
+    __result=$(docker container inspect -f json "$1")
+    __return=$?
+
+    echo "$__result" | jq -r '.[].NetworkSettings.Networks.'"$2"'.IPAddress'
+
+    _func_end "__return" ; return $__return
 }
 
 #
@@ -614,9 +585,38 @@ _container_get_network () {
     if _notinstalled "jq"; then _error "jq not found"; _func_end "1" ; return 1 ; fi
     if ! _container_exist "$1" ; then _error "CONTAINER does not exist"; _func_end "1" ; return 1 ; fi
 
-    docker container inspect -f json "$1" | jq -r '.[].NetworkSettings.Networks | keys[] as $k | "\($k)"'
+    local __result
+    local __return
 
-    _func_end "0" ; return 0
+    __result=$(docker container inspect -f json "$1")
+    __return=$?
+
+    echo "$__result" | jq -r '.[].NetworkSettings.Networks | keys[] as $k | "\($k)"'
+
+    _func_end "__return" ; return $__return
+}
+
+#
+# usage: _container_get_network_ip --container_name name ($1)
+#
+_container_get_network_ip () {
+    _func_start
+
+    if _notexist "$1"; then _error "CONTAINER_NAME EMPTY"; _func_end "1" ; return 1 ; fi
+    if _notinstalled "docker"; then _error "docker not found"; _func_end "1" ; return 1 ; fi
+    if _notinstalled "jq"; then _error "jq not found"; _func_end "1" ; return 1 ; fi
+    if ! _container_exist "$1" ; then _error "CONTAINER does not exist"; _func_end "1" ; return 1 ; fi
+    if ! _container_running "$1" ; then _error "CONTAINER is not running"; _func_end "1" ; return 1 ; fi
+
+    local __return
+    local __result
+
+    __result=$(docker container inspect -f json "$1" 2>/dev/null)
+    __return=$?
+
+    echo "$__result"  | jq -r '.[].NetworkSettings.Networks | keys[] as $k | "\($k), \(.[$k] | .IPAddress)"' | sed -e 's/, /;/'
+
+    _func_end "$__return" ; return $__return
 }
 
 #
@@ -628,15 +628,41 @@ _container_connect_to_network () {
     if _notexist "$1"; then _error "CONTAINER_NAME EMPTY"; _func_end "1" ; return 1 ; fi
     if _notexist "$2"; then _error "NETWORK_NAME EMPTY"; _func_end "1" ; return 1 ; fi
     if _notinstalled "docker"; then _error "docker not found"; _func_end "1" ; return 1 ; fi
-    if _notinstalled "jq"; then _error "jq not found"; _func_end "1" ; return 1 ; fi
     if ! _container_exist "$1" ; then _error "CONTAINER does not exist"; _func_end "1" ; return 1 ; fi
     if ! _network_exist "$2" ; then _error "NETWORK does not exist"; _func_end "1" ; return 1 ; fi
 
-    docker network connect "$2" "$1"
+    local __return
 
-    _func_end "0" ; return 0
+    docker network connect "$2" "$1"
+    __return=$?
+
+    _func_end "$__return" ; return $__return
 }
 
+#
+# usage: _container_get_name_from_image --image_name name ($1)
+#
+_container_get_name_from_image () {
+    _func_start
+
+    if _notexist "$1"; then _error "image_name EMPTY"; _func_end "1" ; return 1 ; fi
+
+    local __result
+    local __return
+
+    __result=$(_container_list | $GREP -w "$1" | cut -d\  -f1)
+    __return=$?
+
+    if _notexist "$__result"; then _error "image_name not found"; _func_end "1" ; return 1 ; fi
+
+    echo "$__result"
+
+    _func_end "$__return" ; return $__return
+}
+
+####################################################################################################
+############################################# BUILD ################################################
+####################################################################################################
 #
 # usage: _build --docker_file file ($1) --target local/dockerhub ($2) --distrib debian/alpine ($3) --force true/false ($4)
 #
@@ -677,7 +703,7 @@ _build () {
     if [ "a$__image_version" = "a$__dockerfile_version" ]; then
         if [ "a$__force" != "atrue" ]; then
             _warning "trying to build same version as existing in $2 repository. Skipping."
-            _func_end "0" ; return 0
+            _func_end "0" ; return 0 # no _shellcheck
         else
             _verbose "trying to build same version as existing in $2 repository. But FORCE."
         fi
@@ -730,11 +756,11 @@ insecure-entitlements = [ "network.host", "security.insecure", "device" ]
   http = true
 EOF
 
-    if ! docker container ls | $GREP moby/buildkit 2>/dev/null 1>/dev/null; then
+    if ! _container_exist "moby/buildkit" ; then
         docker run --rm --privileged multiarch/qemu-user-static:register --reset
     fi
 
-    if docker buildx ls | $GREP multiarch 2>/dev/null 1>/dev/null; then
+    if docker buildx ls | $GREP multiarch 2>/dev/null 1>/dev/null; then # no _shellcheck
         docker buildx rm multiarch
     fi
 
@@ -766,6 +792,7 @@ _get_image_version () {
 
     if _notexist "$1"; then _error "DOCKER_FILE EMPTY"; _func_end "1" ; return 1 ; fi
     if _filenotexist "$1"; then _error "DOCKER_FILE does not exist"; _func_end "1" ; return 1 ; fi
+    if _notinstalled "jq"; then _error "jq not found"; _func_end "1" ; return 1 ; fi
     if _notexist "$2"; then _error "TARGET EMPTY"; _func_end "1" ; return 1 ; fi
     if _notexist "$3"; then _error "DISTRIB EMPTY"; _func_end "1" ; return 1 ; fi
 
@@ -775,6 +802,7 @@ _get_image_version () {
 
     local __image
     local __token
+    local __return
 
     __image=$(echo "$1" | cut -d. -f1 | cut -d/ -f2)
 
@@ -795,7 +823,7 @@ _get_image_version () {
             if _notexist "$DOCKER_USERNAME"; then _error "DOCKER_USERNAME EMPTY"; _func_end "1" ; return 1 ; fi
             __url="https://registry-1.docker.io"
             __image="$DOCKER_USERNAME/$__image"
-            __token=$(_curl "GET" "https://auth.docker.io/token?service=registry.docker.io&scope=repository:$__image:pull" | jq -r '.token')
+            __token=$(_curl "GET" "https://auth.docker.io/token?service=registry.docker.io&scope=repository:$__image:pull" | jq -r '.token') # no _shellcheck
             __header="Accept: application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json, application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.docker.distribution.manifest.v2+json"
             ;;
         *) _error "target must be local or dockerhub"; _func_end "1" ; return 1 ;;
@@ -808,11 +836,15 @@ _get_image_version () {
         for __digest in $(_curl "GET" "$__url/v2/$__image/manifests/$__manifest" "$__header" "Authorization: Bearer $__token" | jq .config | jq -r .digest)
         do
             __resp=$(_curl "GET" "$__url/v2/$__image/blobs/$__digest" "$__header" "Authorization: Bearer $__token")
+            __return=$?
+
+            if [ $__return != 0 ] ; then _error "something went wrong in curl" ; _func_end "$__return" ; return $__return ; fi # no _shellcheck
+
             echo "$__resp" | jq -r .config.Labels | $GREP "version"
         done
     done | sort -u | cut -d: -f2 | cut -d\" -f2
 
-    _func_end "0" ; return 0
+    _func_end "0" ; return 0 # no _shellcheck
 }
 
 #
@@ -853,7 +885,35 @@ _build_all () {
         done
     done
 
-    _func_end "0" ; return 0
+    _func_end "0" ; return 0 # no _shellcheck
+}
+
+####################################################################################################
+######################################### EVERYTHING ELSE ##########################################
+####################################################################################################
+#
+# usage: _compose_file_from_running_container --container_name name ($1)
+#
+_compose_file_from_running_container () {
+    _func_start
+
+    if _notexist "$1"; then _error "container_name EMPTY"; _func_end "1" ; return 1 ; fi
+    if _notinstalled "docker"; then _error "docker not found"; _func_end "1" ; return 1 ; fi
+
+    _debug "container_name:$1"
+
+    local __return
+
+    echo ""
+    echo "####"
+    echo "paste it to https://www.composerize.com/"
+    echo "####"
+    echo ""
+
+    docker run --rm -ti -v /var/run/docker.sock:/var/run/docker.sock bcicen/docker-replay -p "$1"
+    __return=$?
+
+    _func_end "$__return" ; return "$__return"
 }
 
 ####################################################################################################
@@ -914,8 +974,8 @@ _process_lib_docker () {
             volume_remove )	                  _volume_remove                         "$__volume_name"                                       ; __return=$? ; break ;;
             volume_get_mount_point)               _volume_get_mount_point                "$__volume_name"                                       ; __return=$? ; break ;;
             network_remove )	                  _network_remove                        "$__network_name"                                      ; __return=$? ; break ;;
-            container_filelog_show )              _container_filelog_show                                                                       ; __return=$? ; break ;;
-            container_filelog_truncate )          _container_filelog_truncate                                                                   ; __return=$? ; break ;;
+            filelog_show )                        _filelog_show                                                                                 ; __return=$? ; break ;;
+            filelog_truncate )                    _filelog_truncate                                                                             ; __return=$? ; break ;;
             container_log_show )                  _container_log_show                    "$__container_name"                                    ; __return=$? ; break ;;
             container_list )	                  _container_list                                                                               ; __return=$? ; break ;;
             container_list_verbose )	          _container_list_verbose                                                                       ; __return=$? ; break ;;
@@ -925,6 +985,7 @@ _process_lib_docker () {
             build)	                          _build                                 "$__docker_file" "$__target" "$__distrib" "$__force"   ; __return=$? ; break ;;
             container_start)	                  _container_start                       "$__docker_file" "$__target" "$__distrib"              ; __return=$? ; break ;;
             container_stop)	                  _container_stop                        "$__docker_file"                                       ; __return=$? ; break ;;
+            container_rm)	                  _container_rm                          "$__docker_file"                                       ; __return=$? ; break ;;
             container_rshell)	                  _container_rshell                      "$__docker_file" "$__cmd"                              ; __return=$? ; break ;;
             container_shell)	                  _container_shell                       "$__docker_file" "$__target" "$__distrib" "$__cmd"     ; __return=$? ; break ;;
             container_get_ip)	                  _container_get_ip                      "$__container_name" "$__network_name"                  ; __return=$? ; break ;;
