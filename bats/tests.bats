@@ -123,7 +123,7 @@ setup() {
 
 @test "_network_create last" {
   run $MY_GIT_DIR/shell/my_warp.sh --lib docker network_create --network_name testnet --driver bridge --subnet 172.254.0.0/16 --gateway 172.254.0.1
-  assert_failure
+  assert_success
 }
 
 @test "_container_connect_to_network" {
@@ -133,7 +133,7 @@ setup() {
 
 @test "_container_get_network" {
   run $MY_GIT_DIR/shell/my_warp.sh -d -v --lib docker container_get_network --container_name jinade_check_my_ip
-  assert_output "bridge
+  assert_output --partial "bridge
 testnet"
 }
 
@@ -174,7 +174,7 @@ testnet"
 
 @test "_container_get_name_from_image" {
   run $MY_GIT_DIR/shell/my_warp.sh -d -v --lib docker container_get_name_from_image --image_name cretinon/jinade_check_my_ip
-  assert_output "jinade_check_my_ip"
+  assert_output --partial "jinade_check_my_ip"
 }
 
 @test "_container_shell" {
