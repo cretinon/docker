@@ -167,7 +167,7 @@ setup() {
   assert_failure
 }
 
-@test "_container_shell" {
+@test "_container_shell again" {
   run $MY_GIT_DIR/shell/my_warp.sh -d -v --lib docker container_shell --docker_file dockerfile/jinade_check_my_ip --target dockerhub --distrib debian --cmd ls
   assert_output --partial "bin"
 }
