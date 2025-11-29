@@ -166,7 +166,13 @@ _network_exist () {
 
     if _notexist "$1"; then _error "network_name EMPTY"; _func_end "1" ; return 1 ; fi
 
-    if _network_list | $GREP -w "$1" > /dev/null ; then _func_end "0" ; return 0 ; else _func_end "1" ; return 1 ; fi # no _shellcheck
+    if _network_list | $GREP -w "$1" > /dev/null ; then
+        _verbose "network $1 exist"
+        _func_end "0" ; return 0 # no _shellcheck
+    else
+        _verbose "network $1 NOT exist"
+        _func_end "1" ; return 1  # no _shellcheck
+    fi
 }
 
 #
@@ -189,7 +195,7 @@ _network_create () {
 
     local __return
 
-    docker network create -d "$2" --subnet="$3" --gateway="$4" "$1"
+    docker network create -d "$2" --subnet="$3" --gateway="$4" "$1" 2>/dev/null
     __return=$?
 
     _func_end "$__return" ; return "$__return"
