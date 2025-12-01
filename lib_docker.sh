@@ -83,7 +83,7 @@ _volume_create () {
 
     if _notexist "$1"; then _error "volume_name empty"; _func_end "1" ; return 1 ; fi
     if _notinstalled "docker"; then _error "docker not found"; _func_end "1" ; return 1 ; fi
-    if _volume_exist "$1" ; then _error "VOLUME already exist"; _func_end "1" ; return 1 ; fi
+    if _volume_exist "$1" ; then _warning "VOLUME $1 already exist, skipping creation"; _func_end "1" ; return 1 ; fi # no _shellcheck
 
     _debug "volume_name:$1"
 
@@ -187,6 +187,8 @@ _network_create () {
     if _notexist "$4"; then _error "gateway EMPTY"; _func_end "1" ; return 1 ; fi
     if _notinstalled "docker"; then _error "docker not found"; _func_end "1" ; return 1 ; fi
     if _network_exist "$1" ; then _error "NETWORK already exist"; _func_end "1" ; return 1 ; fi
+    if ! _valid_network "$3"; then _error "subnet is not a valid network" ; _func_end "1" ; return 1 ; fi
+    if ! _valid_ipv4 "$4"; then _error "gateway is not a valid ip address" ; _func_end "1" ; return 1 ; fi
 
     _debug "network_name:$1"
     _debug "driver:$2"

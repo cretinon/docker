@@ -18,8 +18,6 @@ ENV HTTPS_PROXY=
 ADD entrypoint/transmission.sh /usr/local/transmission.sh
 RUN chmod 755 /usr/local/transmission.sh
 
-RUN echo "/mnt/nfs        /transmission/auto.syno --ghost,--timeout=60" > /etc/auto.master.d/syno.autofs
-
 COPY conf/transmission.json /etc/transmission-daemon/settings.json
 
 EXPOSE 9091/tcp

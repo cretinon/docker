@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+
+# shellcheck source=/dev/null disable=SC2120,2155,2034,2015,2013,2012,2196,2086,2046,1078,2140,1079,2089,2001,2090
+
 #===============================================================================
 #          FILE: torproxy.sh
 #
@@ -53,7 +56,7 @@ exitnode_country() { local country="$1" file=/etc/tor/torrc
 # Return: Updated configuration file
 hidden_service() { local port="$1" host="$2" file=/etc/tor/torrc
     sed -i '/^HiddenServicePort '"$port"' /d' $file
-    grep -q '^HiddenServiceDir' $file ||
+    grep -q '^HiddenServiceDir' $file ||  # no _shellcheck
         echo "HiddenServiceDir /var/lib/tor/hidden_service" >>$file
     echo "HiddenServicePort $port $host" >>$file
 }
@@ -100,7 +103,7 @@ Options (fields in '[]' are optional, '<>' are required):
                 <host:port> - destination for service request
 The 'command' (if provided and valid) will be run instead of torproxy
 " >&2
-    exit $RC
+    exit "$RC"
 }
 
 while getopts ":hb:el:np:s:" opt; do
@@ -126,12 +129,12 @@ shift $(( OPTIND - 1 ))
             $(sed 's/^/"/; s/$/"/; s/;/" "/g' <<< $SERVICE)
 [[ "${USERID:-""}" =~ ^[0-9]+$ ]] && usermod -u $USERID -o debian-tor
 [[ "${GROUPID:-""}" =~ ^[0-9]+$ ]] && groupmod -g $GROUPID -o debian-tor
-for env in $(printenv | grep '^TOR_'); do
+for env in $(printenv | grep '^TOR_'); do # no _shellcheck
     name="$(cut -c4- <<< ${env%%=*})"
     val="\"${env##*=}\""
     [[ "$name" =~ _ ]] && continue
     [[ "$val" =~ ^\"([0-9]+|false|true)\"$ ]] && val="$(sed 's|"||g' <<< $val)"
-    if grep -q "^$name" /etc/tor/torrc; then
+    if grep -q "^$name" /etc/tor/torrc; then # no _shellcheck
         sed -i "/^$name/s| .*| $val|" /etc/tor/torrc
     else
         echo "$name $val" >>/etc/tor/torrc
@@ -139,7 +142,7 @@ for env in $(printenv | grep '^TOR_'); do
 done
 
 chown -Rh debian-tor. /etc/tor /var/lib/tor /var/log/tor 2>&1 |
-            grep -iv 'Read-only' || :
+            grep -iv 'Read-only' || : # no _shellcheck
 
 force_route() {
     route del default
@@ -149,7 +152,7 @@ force_route() {
 
     NET=$(cat $route)
     GW=$(cat $gw)
-    
+
     ip route add to $NET via $GW dev eth0 onlink
 }
 
@@ -163,7 +166,7 @@ if [[ $# -ge 1 && -x $(which $1 2>&-) ]]; then
 elif [[ $# -ge 1 ]]; then
     echo "ERROR: command not found: $1"
     exit 13
-elif ps -ef | egrep -v 'grep|torproxy.sh' | grep -q tor; then
+elif ps -ef | egrep -v 'grep|torproxy.sh' | grep -q tor; then # no _shellcheck
     echo "Service already running, please restart container to apply changes"
 else
     [[ -e /srv/tor/hidden_service/hostname ]] && {

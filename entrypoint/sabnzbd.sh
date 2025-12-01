@@ -4,11 +4,11 @@ force_route() {
     route del default
 
     VPN=$(cat $vpn)
-    route add default gw $VPN
+    route add default gw "$VPN"
 
     NET=$(cat $route)
     GW=$(cat $gw)
-    ip route add to $NET via $GW dev eth0 onlink
+    ip route add to "$NET" via "$GW" dev eth0 onlink
 
 }
 
@@ -28,5 +28,3 @@ EOF
 /etc/init.d/autofs restart
 
 /usr/bin/sabnzbdplus -s 0.0.0.0 -f /sabnzbd/
-
-
