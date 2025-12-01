@@ -937,6 +937,7 @@ _process_lib_docker () {
     _debug "HTTP_PROXY:$HTTP_PROXY"
     _debug "HTTPS_PROXY:$HTTPS_PROXY"
     _debug "LOCAL_REGISTRY:$LOCAL_REGISTRY"
+    _debug "FORCE:$FORCE"
 
     eval set -- "$@"
 
@@ -965,7 +966,6 @@ _process_lib_docker () {
             --docker_file )    __docker_file=$2       ; shift ; shift         ;;
             --target )         __target=$2            ; shift ; shift         ;;
             --distrib )        __distrib=$2           ; shift ; shift         ;;
-            --force )          __force=$2             ; shift ; shift         ;;
             --cmd )            __cmd=$2               ; shift ; shift         ;;
             --image_name )     __image_name=$2        ; shift ; shift         ;;
             -- )                                        shift ;         break ;;
@@ -1008,8 +1008,8 @@ _process_lib_docker () {
 
             compose_file_from_running_container ) _compose_file_from_running_container   "$__container_name"                                    ; __return=$? ; break ;;
 
-            build)	                          _build                                 "$__docker_file" "$__target" "$__distrib" "$__force"   ; __return=$? ; break ;;
-            build_all)	                          _build_all                             "$__target" "$__force"                                 ; __return=$? ; break ;;
+            build)	                          _build                                 "$__docker_file" "$__target" "$__distrib" "$FORCE"     ; __return=$? ; break ;;
+            build_all)	                          _build_all                             "$__target" "$FORCE"                                   ; __return=$? ; break ;;
             -- ) shift ;;
             *) _error "command $1 not found" ; __return=1 ; break ;;
         esac
