@@ -1,0 +1,31 @@
+ARG VERSION="1.1"
+ARG DISTRIB
+ARG DOCKERSRC
+ARG BASE_TAG
+
+FROM ${DOCKERSRC}:${DISTRIB}
+ARG DISTRIB
+ARG DOCKERSRC
+ARG TARGETPLATFORM
+ARG HTTP_PROXY
+ARG HTTPS_PROXY
+ENV HTTP_PROXY=$HTTP_PROXY
+ENV HTTPS_PROXY=$HTTPS_PROXY
+
+# debian only: the stacks of the fleet consume the `_debian` images (see _build_all)
+RUN apt-get update && apt-get -y -q install --no-install-recommends iproute2 netbase autofs procps nfs-common net-tools transmission-daemon curl ca-certificates && apt-get clean && rm -rf /var/cache/apt/* /var/lib/apt/lists/*
+
+# Clear proxy variables for final image
+ENV HTTP_PROXY=
+ENV HTTPS_PROXY=
+
+COPY --chmod=755 entrypoint/transmission.sh /usr/local/transmission.sh
+
+RUN mkdir -p /etc/auto.master.d/
+RUN echo "/mnt/nfs        /transmission/auto.syno --ghost,--timeout=60" > /etc/auto.master.d/syno.autofs
+
+COPY conf/transmission.json /etc/transmission-daemon/settings.json
+
+EXPOSE 9091/tcp
+
+ENTRYPOINT ["/usr/local/transmission.sh"]

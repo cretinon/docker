@@ -1,0 +1,58 @@
+ARG VERSION="1.2"
+ARG DISTRIB
+ARG DOCKERSRC
+ARG BASE_TAG
+
+FROM ${DOCKERSRC}:${DISTRIB}
+ARG DISTRIB
+ARG DOCKERSRC
+ARG TARGETPLATFORM
+ARG HTTP_PROXY
+ARG HTTPS_PROXY
+ENV HTTP_PROXY=$HTTP_PROXY
+ENV HTTPS_PROXY=$HTTPS_PROXY
+
+# debian only: the stacks of the fleet consume the `_debian` images (see _build_all)
+RUN apt-get update && apt-get -y -q install --no-install-recommends build-essential libssl-dev openssl wget ca-certificates && apt-get clean && rm -rf /var/cache/apt/* /var/lib/apt/lists/*
+
+# Clear proxy variables for final image
+ENV HTTP_PROXY=
+ENV HTTPS_PROXY=
+
+# fetch.sh, the build-time downloader: it goes through the apt cache of the lab when
+# HTTP_PROXY points at it (see entrypoint/fetch.sh). A `curl`/`wget` called directly here
+# fetches from the builder, where the cache is not reachable, and it used to hand an empty
+# body (the file type the cache refuses) to `tar` without a word
+COPY --chmod=755 entrypoint/fetch.sh /usr/local/bin/
+
+# squid is built from source: the upstream release tarball is downloaded to /tmp first, so a
+# failed or empty download fails the build instead of unpacking nothing
+RUN mkdir -p /usr/src/squid \
+    && HTTP_PROXY="$HTTP_PROXY" fetch.sh "https://github.com/squid-cache/squid/releases/download/SQUID_6_12/squid-6.12.tar.gz" > /tmp/squid.tar.gz \
+    && tar -xzf /tmp/squid.tar.gz -C /usr/src/squid --strip-components=1 && rm -f /tmp/squid.tar.gz
+
+# `--disable-arch-native`: squid's configure tunes the build for the CPU it is compiled *on*
+# when it can, and its own comment warns that a virtual machine often mis-detects that CPU
+# ("building inside a virtual machine environment has been found to cause random Illegal
+# Instruction errors due to mis-detection of CPU"). This image is built on the controller --
+# a Ryzen with AVX-512 -- and runs on the guests, whose Proxmox `kvm64` CPU ("QEMU Virtual
+# CPU version 2.5+") answers to none of it: the binary died with `Illegal instruction (core
+# dumped)` before squid could start, and the stack restart-looped
+RUN cd /usr/src/squid \
+    && ./configure --prefix=/opt/squid --disable-arch-native --enable-icap-client --enable-ssl --with-openssl --enable-ssl-crtd --enable-auth --enable-basic-auth-helpers="NCSA" \
+    && make -j4 \
+    && make install \
+    && rm -rf /usr/src/squid
+
+COPY conf/squid.conf /opt/squid/
+
+RUN mkdir /squid
+RUN groupadd -g 31 squid
+RUN useradd -g squid -u 31 -d /squid squid
+RUN chown squid:squid /squid
+
+EXPOSE 3128
+
+COPY --chmod=755 entrypoint/squid.sh /opt/squid/squid.sh
+
+ENTRYPOINT ["/opt/squid/squid.sh"]

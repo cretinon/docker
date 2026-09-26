@@ -1,2 +1,12 @@
 data/
 conf/my_docker.conf
+
+# The configuration of the stacks lives in the repository *encrypted* (`<name>.gpg`): the
+# plaintext is what the wrapper of `--lib ansible playbook_docker_server` produces, in a
+# temporary tree of its own (`mktemp -d`), and it has no business in the working tree -- a
+# decrypted `.vpn`, `vpn.conf` or `sabnzbd.ini` next to its `.gpg` is a secret waiting to be
+# staged by a `git add -A`. The directories stay traversable and every `.gpg` stays
+# trackable, so adding an encrypted file keeps working.
+volumes/*/_data/**
+!volumes/*/_data/**/
+!volumes/*/_data/**/*.gpg

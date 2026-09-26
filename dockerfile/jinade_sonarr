@@ -1,4 +1,4 @@
-ARG VERSION="1.1"
+ARG VERSION="1.2"
 ARG DISTRIB
 ARG DOCKERSRC
 ARG BASE_TAG
@@ -12,8 +12,12 @@ ARG HTTPS_PROXY
 ENV HTTP_PROXY=$HTTP_PROXY
 ENV HTTPS_PROXY=$HTTPS_PROXY
 
-RUN if [ "$DISTRIB" = "debian" ]; then apt-get update && apt-get -y -q install --no-install-recommends netbase autofs nfs-common net-tools libsqlite3-0 wget ca-certificates && apt-get clean && rm -rf /var/cache/apt/* /var/lib/apt/lists/* ; fi
-RUN if [ "$DISTRIB" = "alpine" ]; then apk add --no-cache --purge autofs nfs-utils sqlite-libs wget ca-certificates && rm -rf /var/cache/apk/* ; fi
+# `libicu76` is what the .NET runtime of Sonarr needs to start: without it the process aborts
+# in `System.Globalization.CultureData` with `Couldn't find a valid ICU package installed on
+# the system`. The images of the old host carried `libicu72` with their Bookworm base; this
+# one runs trixie, whose ICU is 76
+RUN if [ "$DISTRIB" = "debian" ]; then apt-get update && apt-get -y -q install --no-install-recommends libicu76 netbase autofs nfs-common net-tools libsqlite3-0 wget ca-certificates && apt-get clean && rm -rf /var/cache/apt/* /var/lib/apt/lists/* ; fi
+RUN if [ "$DISTRIB" = "alpine" ]; then apk add --no-cache --purge icu-libs autofs nfs-utils sqlite-libs wget ca-certificates && rm -rf /var/cache/apk/* ; fi
 
 ENV HTTP_PROXY=
 ENV HTTPS_PROXY=
@@ -21,12 +25,17 @@ ENV HTTPS_PROXY=
 RUN mkdir -p /opt/Sonarr
 
 COPY --chmod=755 entrypoint/sonarr.sh /usr/local/bin/
+# fetch.sh, the build-time downloader: it goes through the apt cache of the lab when
+# HTTP_PROXY points at it (see entrypoint/fetch.sh)
+COPY --chmod=755 entrypoint/fetch.sh /usr/local/bin/
 
 WORKDIR /opt/Sonarr
 
-RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then wget -O- "https://github.com/Sonarr/Sonarr/releases/download/v4.0.13.2932/Sonarr.main.4.0.13.2932.linux-x64.tar.gz" | tar xz --strip-components=1 && rm -rfv Sonarr.Update ; fi
-RUN if [ "$TARGETPLATFORM" = "linux/arm64" ]; then wget -O- "https://github.com/Sonarr/Sonarr/releases/download/v4.0.13.2932/Sonarr.main.4.0.13.2932.linux-arm64.tar.gz" | tar xz --strip-components=1 && rm -rfv Sonarr.Update ; fi
-RUN if [ "$TARGETPLATFORM" = "linux/arm/v7" ]; then wget -O- "https://github.com/Sonarr/Sonarr/releases/download/v4.0.13.2932/Sonarr.main.4.0.13.2932.linux-arm.tar.gz" | tar xz --strip-components=1 && rm -rfv Sonarr.Update ; fi
+# The releases go through fetch.sh, with HTTP_PROXY passed explicitly: the ENV of that name
+# was cleared above, and the *build argument* is what the cache URL lives in
+RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then HTTP_PROXY="$HTTP_PROXY" fetch.sh "https://github.com/Sonarr/Sonarr/releases/download/v4.0.13.2932/Sonarr.main.4.0.13.2932.linux-x64.tar.gz" | tar xz --strip-components=1 && rm -rfv Sonarr.Update ; fi
+RUN if [ "$TARGETPLATFORM" = "linux/arm64" ]; then HTTP_PROXY="$HTTP_PROXY" fetch.sh "https://github.com/Sonarr/Sonarr/releases/download/v4.0.13.2932/Sonarr.main.4.0.13.2932.linux-arm64.tar.gz" | tar xz --strip-components=1 && rm -rfv Sonarr.Update ; fi
+RUN if [ "$TARGETPLATFORM" = "linux/arm/v7" ]; then HTTP_PROXY="$HTTP_PROXY" fetch.sh "https://github.com/Sonarr/Sonarr/releases/download/v4.0.13.2932/Sonarr.main.4.0.13.2932.linux-arm.tar.gz" | tar xz --strip-components=1 && rm -rfv Sonarr.Update ; fi
 
 EXPOSE 8989
 

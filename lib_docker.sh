@@ -766,15 +766,21 @@ insecure-entitlements = [ "network.host", "security.insecure", "device" ]
   http = true
 EOF
 
-    if ! _container_exist "moby/buildkit" ; then
-        docker run --rm --privileged multiarch/qemu-user-static:register --reset
-    fi
+    # amd64 only: the images of the stacks are built on an amd64 machine and consumed by
+    # amd64 guests. The three-platform build this used to do needs the qemu-user-static
+    # registration below (a privileged container pulled from Docker Hub) and builds every
+    # image three times, which a slow link pays for twice -- fetching the Debian packages
+    # and the release tarballs of each architecture.
+    #
+    # if ! _container_exist "moby/buildkit" ; then
+    #     docker run --rm --privileged multiarch/qemu-user-static:register --reset
+    # fi
 
     if docker buildx ls | $GREP multiarch 2>/dev/null 1>/dev/null; then # no _shellcheck
         docker buildx rm multiarch
     fi
 
-   docker buildx create --use --bootstrap --node multiarch --name multiarch --driver docker-container --platform linux/arm/v7,linux/arm64/v8,linux/amd64 --buildkitd-config /etc/buildkit/buildkitd.toml
+   docker buildx create --use --bootstrap --node multiarch --name multiarch --driver docker-container --platform linux/amd64 --buildkitd-config /etc/buildkit/buildkitd.toml
 
    docker buildx build --output "$__output_build" --rm --force-rm --compress -f "$1" -t "$__target"/"$__image":"$3" \
           --build-arg BASE_TAG="$__base_tag" \
@@ -788,7 +794,7 @@ EOF
           --label org.label-schema.name="$__image" \
           --label org.label-schema.schema-version="$__dockerfile_version" \
           --no-cache \
-          --platform linux/arm/v7,linux/arm64/v8,linux/amd64  .
+          --platform linux/amd64  .
    __return=$?
 
    _func_end "$__return" ; return "$__return"
@@ -878,21 +884,21 @@ _build_all () {
     esac
 
     local __file
-    local __distrib
     local __force
     local __return
 
     if _notexist "$2"; then __force=false ; else __force="$2" ; fi
 
     for __file in dockerfile/*; do
-        for __distrib in "debian" "alpine"; do
-            case $__file in
-                *debug*) true;;
-                *) _verbose "Building file:$__file"
-                   if ! _build "$__file" "$1" "$__distrib" "$__force" ; then _error "something went wrong with build, exiting" ; _func_end "1" ; return 1 ; fi
-                   ;;
-            esac
-        done
+        # debian only: the stacks of the fleet run the `_debian` images (the `alpine` ones
+        # are built for no consumer of this lab, and each of them costs one more pull of the
+        # base image and one more apt-free package install)
+        case $__file in
+            *debug*) true;;
+            *) _verbose "Building file:$__file"
+               if ! _build "$__file" "$1" "debian" "$__force" ; then _error "something went wrong with build, exiting" ; _func_end "1" ; return 1 ; fi
+               ;;
+        esac
     done
 
     _func_end "0" ; return 0 # no _shellcheck

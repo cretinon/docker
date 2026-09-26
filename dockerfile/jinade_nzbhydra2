@@ -1,0 +1,40 @@
+ARG VERSION="1.1"
+ARG DISTRIB
+ARG DOCKERSRC
+ARG BASE_TAG
+
+FROM ${DOCKERSRC}:${DISTRIB}
+ARG DISTRIB
+ARG DOCKERSRC
+ARG TARGETPLATFORM
+ARG HTTP_PROXY
+ARG HTTPS_PROXY
+ENV HTTP_PROXY=$HTTP_PROXY
+ENV HTTPS_PROXY=$HTTPS_PROXY
+
+# debian only: the stacks of the fleet consume the `_debian` images (see _build_all)
+RUN apt-get update && apt-get -y -q install --no-install-recommends unzip openjdk-21-jdk-headless python-is-python3 wget ca-certificates && apt-get clean && rm -rf /var/cache/apt/* /var/lib/apt/lists/*
+
+# Clear proxy variables for final image
+ENV HTTP_PROXY=
+ENV HTTPS_PROXY=
+
+RUN mkdir -p /opt/Nzbhydra2
+
+COPY --chmod=755 entrypoint/nzbhydra2.sh /usr/local/bin/
+
+# fetch.sh, the build-time downloader: it goes through the apt cache of the lab when
+# HTTP_PROXY points at it (see entrypoint/fetch.sh). A `wget` called directly here fetches
+# from the builder, where the cache is not reachable, and it used to hand an empty body (the
+# file type the cache refuses) to `unzip` without a word
+COPY --chmod=755 entrypoint/fetch.sh /usr/local/bin/
+
+WORKDIR /opt/Nzbhydra2
+
+# the release is amd64 only and comes as a zip: `unzip` needs a seekable file, hence the
+# download to /tmp -- which also fails the build when the download failed or came back empty
+RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then HTTP_PROXY="$HTTP_PROXY" fetch.sh "https://github.com/theotherp/nzbhydra2/releases/download/v7.12.3/nzbhydra2-7.12.3-amd64-linux.zip" > /tmp/nzbhydra2.zip && unzip -q /tmp/nzbhydra2.zip && rm -f /tmp/nzbhydra2.zip && chmod +x /opt/Nzbhydra2/nzbhydra2wrapperPy3.py ; fi
+
+EXPOSE 5076
+
+ENTRYPOINT ["/usr/local/bin/nzbhydra2.sh"]

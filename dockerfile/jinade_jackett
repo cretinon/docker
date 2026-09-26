@@ -1,0 +1,43 @@
+ARG VERSION="1.2"
+ARG DISTRIB
+ARG DOCKERSRC
+ARG BASE_TAG
+
+FROM ${DOCKERSRC}:${DISTRIB}
+ARG DISTRIB
+ARG DOCKERSRC
+ARG TARGETPLATFORM
+ARG HTTP_PROXY
+ARG HTTPS_PROXY
+ENV HTTP_PROXY=$HTTP_PROXY
+ENV HTTPS_PROXY=$HTTPS_PROXY
+
+# debian only: the stacks of the fleet consume the `_debian` images (see _build_all)
+# `libicu76`: Jackett is a .NET application and terminates with `Couldn't find a valid ICU
+# package installed on the system` when its runtime cannot find one -- `mono-devel` does not
+# pull it on trixie, while the Bookworm images of the old host got `libicu72` through it
+RUN apt-get update && apt-get -y -q install --no-install-recommends libicu76 iproute2 netbase net-tools mono-devel wget ca-certificates && apt-get clean && rm -rf /var/cache/apt/* /var/lib/apt/lists/*
+
+# Clear proxy variables for final image
+ENV HTTP_PROXY=
+ENV HTTPS_PROXY=
+
+RUN mkdir -p /opt/Jackett
+
+COPY --chmod=755 entrypoint/jackett.sh /usr/local/bin/
+
+# fetch.sh, the build-time downloader: it goes through the apt cache of the lab when
+# HTTP_PROXY points at it (see entrypoint/fetch.sh). A `wget` called directly here fetches
+# from the builder, where the cache is not reachable, and it used to hand an empty body (the
+# file type the cache refuses) to `tar` without a word
+COPY --chmod=755 entrypoint/fetch.sh /usr/local/bin/
+
+WORKDIR /opt/Jackett
+
+# the release is amd64 only, and it is downloaded to /tmp before being unpacked, so a failed
+# or empty download fails the build instead of unpacking nothing
+RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then HTTP_PROXY="$HTTP_PROXY" fetch.sh "https://github.com/Jackett/Jackett/releases/download/v0.24.2670/Jackett.Binaries.LinuxAMDx64.tar.gz" > /tmp/jackett.tar.gz && tar xzf /tmp/jackett.tar.gz --strip-components=1 && rm -f /tmp/jackett.tar.gz ; fi
+
+EXPOSE 9117
+
+ENTRYPOINT ["/usr/local/bin/jackett.sh"]
