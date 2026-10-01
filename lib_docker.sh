@@ -2,33 +2,6 @@
 
 # shellcheck source=/dev/null disable=SC2294
 
-####################################################################################################
-############################################## INSTALL #############################################
-####################################################################################################
-#
-# usage: _install
-#
-_install_docker () {
-    _func_start
-
-    if _installed "docker"; then _func_end "0" ; return 0 ; fi # no _shellcheck
-
-    _warning ""
-    _warning "If you'r using apt-cacher-ng as proxy, be sure you have something like :"
-    _warning "    PassThroughPattern: ^download\.docker\.com:443$"
-    _warning "in your /etc/apt-cacher-ng/acng.conf then /etc/init.d/apt-cacher-ng restart"
-    _warning ""
-
-    local __return
-
-    if ! _func_exist "_playbook_localhost_docker" ; then _error "lib_ansible not installed" ; _func_end "1" ; return 1 ; fi
-
-    _playbook_localhost_docker
-    __return=$?
-
-    _func_end "$__return" ; return "$__return"
-}
-
 #
 # usage: _usage_docker
 #
@@ -981,8 +954,6 @@ _process_lib_docker () {
 
     while true ; do
         case "$1" in
-            install )                             _install_docker                                                                               ; __return=$? ; break ;;
-
             volume_list )	                  _volume_list                                                                                  ; __return=$? ; break ;;
             volume_create )	                  _volume_create                         "$__volume_name"                                       ; __return=$? ; break ;;
             volume_remove )	                  _volume_remove                         "$__volume_name"                                       ; __return=$? ; break ;;
